@@ -14,7 +14,7 @@ using System.Text.RegularExpressions;
 using VisualEditorApp.Models;
 using VisualEditorApp.Models.Tools;
 using VisualEditorApp.ViewModels;
-
+ 
 namespace VisualEditorApp;
 
 public partial class WorkspaceView : UserControl
@@ -117,6 +117,9 @@ public partial class WorkspaceView : UserControl
                 {
                     UpdateOutline(rootControl);
                 }
+
+                // السطر الجديد
+                UpdateXamlEditor();
             }
         }
     }
@@ -201,6 +204,14 @@ public partial class WorkspaceView : UserControl
     {
         if (_isPreviewMode || !e.GetCurrentPoint(DesignSurface).Properties.IsLeftButtonPressed) return;
 
+        // لو إنت ضاغط على أي حاجة تبع الـ AdornerCanvas (المربعات)، اخرج فوراً وسيبها تكبر الكنترول
+        // السطر الصحيح في Avalonia 11
+        if (e.Source is Visual sourceVisual && (sourceVisual == AdornerCanvas || AdornerCanvas.IsVisualAncestorOf(sourceVisual)))
+        {
+            return; // لو الماوس فوق المربعات الزرقاء، سيبها تعمل Resize وماتعملش Drag
+        }
+
+
         // استخدام الدالة الجديدة لاصطياد الكنترول
         Control? clickedControl = GetSelectableControl(e.Source as Control);
 
@@ -273,7 +284,8 @@ public partial class WorkspaceView : UserControl
             _isDraggingControl = false;
             e.Handled = true;
 
-            // هنا المفروض ننادي على مولد الـ XAML عشان يكتب الكود الجديد بعد تغيير المكان
+            // السطر الجديد
+            UpdateXamlEditor();
         }
     }
 
@@ -347,36 +359,68 @@ public partial class WorkspaceView : UserControl
         double deltaX = e.Vector.X;
         double deltaY = e.Vector.Y;
 
-        // لو الكنترول ملوش عرض أو طول صريح (NaN)، نأخذ حجمه الحالي كبداية
+        // الحصول على المقاس الحالي
         double currentWidth = double.IsNaN(_selectedControl.Width) ? _selectedControl.Bounds.Width : _selectedControl.Width;
         double currentHeight = double.IsNaN(_selectedControl.Height) ? _selectedControl.Bounds.Height : _selectedControl.Height;
 
         double newWidth = currentWidth;
         double newHeight = currentHeight;
 
+        // متغيرات لضبط المكان (عشان لو كبرنا من فوق أو شمال)
+        double leftOffset = 0;
+        double topOffset = 0;
+
+        // تحديد اتجاه السحب
         if (thumb.Name == "TopLeft")
         {
             newWidth -= deltaX; newHeight -= deltaY;
+            leftOffset = deltaX; topOffset = deltaY;
         }
         else if (thumb.Name == "TopRight")
         {
             newWidth += deltaX; newHeight -= deltaY;
+            topOffset = deltaY;
         }
         else if (thumb.Name == "BottomLeft")
         {
             newWidth -= deltaX; newHeight += deltaY;
+            leftOffset = deltaX;
         }
         else if (thumb.Name == "BottomRight")
         {
             newWidth += deltaX; newHeight += deltaY;
         }
 
-        // تطبيق المقاس الجديد على الكنترول الحقيقي (مع التأكد أنه لا يصغر جداً)
-        if (newWidth > 10) _selectedControl.Width = newWidth;
-        if (newHeight > 10) _selectedControl.Height = newHeight;
+        // 1. تطبيق العرض الجديد وتعديل الإحداثي السيني (X)
+        if (newWidth > 10)
+        {
+            _selectedControl.Width = newWidth;
+            if (leftOffset != 0)
+            {
+                if (_selectedControl.Parent is Canvas)
+                    Canvas.SetLeft(_selectedControl, (double.IsNaN(Canvas.GetLeft(_selectedControl)) ? 0 : Canvas.GetLeft(_selectedControl)) + leftOffset);
+                else
+                    _selectedControl.Margin = new Avalonia.Thickness(_selectedControl.Margin.Left + leftOffset, _selectedControl.Margin.Top, 0, 0);
+            }
+        }
 
-        // تحديث مكان الإطار الأزرق ليطابق الحجم الجديد
+        // 2. تطبيق الطول الجديد وتعديل الإحداثي الصادي (Y)
+        if (newHeight > 10)
+        {
+            _selectedControl.Height = newHeight;
+            if (topOffset != 0)
+            {
+                if (_selectedControl.Parent is Canvas)
+                    Canvas.SetTop(_selectedControl, (double.IsNaN(Canvas.GetTop(_selectedControl)) ? 0 : Canvas.GetTop(_selectedControl)) + topOffset);
+                else
+                    _selectedControl.Margin = new Avalonia.Thickness(_selectedControl.Margin.Left, _selectedControl.Margin.Top + topOffset, 0, 0);
+            }
+        }
+
+        // 3. تحديث الإطار الأزرق عشان يمشي مع الكنترول بالمللي
         UpdateAdornerPosition();
+
+        UpdateXamlEditor();
     }
     private bool _isPreviewMode = false;
 
@@ -517,6 +561,101 @@ public partial class WorkspaceView : UserControl
             }
         }
         return node;
+    }
+
+
+    // --- محرك توليد XAML (XAML Generator) ---
+    private void UpdateXamlEditor()
+    {
+        if (DesignSurface.Content is not Control rootControl) return;
+
+        var sb = new System.Text.StringBuilder();
+
+        // كتابة ترويسة الملف (Header)
+        sb.AppendLine("<UserControl xmlns=\"https://github.com/avaloniaui\"");
+        sb.AppendLine("             xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">");
+
+        // البدء في ترجمة الكنترول الأساسي وكل اللي جواه
+        BuildControlXaml(rootControl, sb, 1);
+
+        sb.AppendLine("</UserControl>");
+
+        // إرسال الكود النهائي للمحرر السفلي (مع إيقاف التحديث العكسي عشان ما يحصلش لوب)
+        _isInternalUpdate = true;
+        XamlEditor.Text = sb.ToString();
+        _isInternalUpdate = false;
+    }
+
+    private void BuildControlXaml(Control control, System.Text.StringBuilder sb, int indentLevel)
+    {
+        // عمل مسافات بادئة (Indentation) عشان الكود يطلع شكله منظم
+        string indent = new string(' ', indentLevel * 4);
+        string typeName = control.GetType().Name;
+
+        sb.Append($"{indent}<{typeName}");
+
+        // --- 1. استخراج الخصائص الأساسية ---
+        if (!double.IsNaN(control.Width)) sb.Append($" Width=\"{(int)control.Width}\"");
+        if (!double.IsNaN(control.Height)) sb.Append($" Height=\"{(int)control.Height}\"");
+
+        // استخراج الـ Margin (لو الكنترول جوه StackPanel أو Grid)
+        if (control.Margin != default)
+            sb.Append($" Margin=\"{(int)control.Margin.Left},{(int)control.Margin.Top},{(int)control.Margin.Right},{(int)control.Margin.Bottom}\"");
+
+        // استخراج الإحداثيات (لو الكنترول جوه Canvas)
+        if (control.Parent is Canvas)
+        {
+            double left = Canvas.GetLeft(control);
+            double top = Canvas.GetTop(control);
+            if (!double.IsNaN(left)) sb.Append($" Canvas.Left=\"{(int)left}\"");
+            if (!double.IsNaN(top)) sb.Append($" Canvas.Top=\"{(int)top}\"");
+        }
+
+        // --- 2. معالجة المحتوى الداخلي والأبناء (Children) ---
+        bool hasChildren = false;
+
+        // لو الكنترول Panel وبيشيل عناصر كتير (زي Grid, StackPanel, Canvas)
+        if (control is Panel panel && panel.Children.Count > 0)
+        {
+            sb.AppendLine(">");
+            foreach (var child in panel.Children)
+            {
+                if (child is Control childCtrl && childCtrl.Name != "SelectionAdorner") // نتجاهل الإطار الأزرق
+                {
+                    BuildControlXaml(childCtrl, sb, indentLevel + 1);
+                }
+            }
+            hasChildren = true;
+        }
+        // لو الكنترول بيشيل عنصر واحد (زي Border, Button)
+        else if (control is ContentControl cc && cc.Content != null)
+        {
+            if (cc.Content is Control childCtrl)
+            {
+                sb.AppendLine(">");
+                BuildControlXaml(childCtrl, sb, indentLevel + 1);
+                hasChildren = true;
+            }
+            else // لو المحتوى مجرد نص (مثلاً Button جواه كلمة "Click")
+            {
+                sb.Append($" Content=\"{cc.Content}\"");
+            }
+        }
+        // لو الكنترول عبارة عن TextBlock
+        else if (control is TextBlock tb && !string.IsNullOrEmpty(tb.Text))
+        {
+            sb.Append($" Text=\"{tb.Text}\"");
+        }
+
+        // --- 3. إغلاق التاج (Tag Closure) ---
+        if (hasChildren)
+        {
+            sb.AppendLine($"{indent}</{typeName}>");
+        }
+        else
+        {
+            sb.AppendLine(" />"); // إغلاق ذاتي لو الكنترول فاضي
+        }
     }
 }
 
