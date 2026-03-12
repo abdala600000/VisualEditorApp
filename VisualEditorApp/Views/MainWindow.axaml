@@ -30,6 +30,9 @@
             <DataTemplate DataType="{x:Type tools:DocumentOutlineTool}">
             <local:DocumentOutlineView />
         </DataTemplate>
+             <DataTemplate DataType="{x:Type vm:SolutionExplorerTool}">
+            <local:SolutionExplorerView />
+        </DataTemplate>
     </Window.DataTemplates>
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,

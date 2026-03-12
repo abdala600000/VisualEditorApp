@@ -29,11 +29,7 @@ namespace VisualEditorApp.Models.Tools
             Id = "DocumentOutline";
             Title = "Document Outline";
 
-            var testNode = new ElementNode { Header = "Test Root" };
-            testNode.Children.Add(new ElementNode { Header = "Child Element 1" });
-            testNode.Children.Add(new ElementNode { Header = "Child Element 2" });
-
-            Nodes.Add(testNode);
+            
         }
 
     }

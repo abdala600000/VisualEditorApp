@@ -1,9 +1,14 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using CommunityToolkit.Mvvm.Messaging;
+using Dock.Model.Controls;
+using Dock.Model.Mvvm.Controls;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,10 +17,11 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using VisualEditorApp.Models;
 using VisualEditorApp.ViewModels;
+using static VisualEditorApp.ViewModels.SolutionExplorerTool;
 
 namespace VisualEditorApp.Views
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IRecipient<OpenFileMessage>
     {
         public MainWindow()
         {
@@ -30,6 +36,9 @@ namespace VisualEditorApp.Views
             factory.InitLayout(layout);
 
             MainDockControl.Layout = layout;
+            // «·Õ· «·”Õ—Ì: ≈·€«¡ √Ì  ”ÃÌ· ”«»ﬁ ·Â–« «·ﬂ«∆‰ ﬁ»· «· ”ÃÌ· «·ÃœÌœ
+            WeakReferenceMessenger.Default.UnregisterAll(this);
+            WeakReferenceMessenger.Default.Register<OpenFileMessage>(this);
         }
         // --- œÊ«· ‘—Ìÿ «·ﬁÊ«∆„ ---
 
@@ -39,10 +48,29 @@ namespace VisualEditorApp.Views
             Debug.WriteLine(" „ «Œ Ì«—: ≈‰‘«¡ „‘—Ê⁄ ÃœÌœ");
         }
 
-        private void OpenProject_Click(object? sender, RoutedEventArgs e)
+        private async void OpenProject_Click(object? sender, RoutedEventArgs e)
         {
-            // Â‰« ”‰ﬂ » ﬂÊœ › Õ „Ã·œ «·„‘—Ê⁄
-            Debug.WriteLine(" „ «Œ Ì«—: › Õ „‘—Ê⁄");
+            // «·Ê’Ê· ··‹ Window «·Õ«·Ì… »√ÕœÀ ÿ—Ìﬁ… ›Ì Avalonia 11
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
+                if (topLevel != null)
+                {
+                    // › Õ «·‹ Picker «·ÕœÌÀ
+                    var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+                    {
+                        Title = "Open Project Folder",
+                        AllowMultiple = false
+                    });
+
+                    if (folders.Count > 0)
+                    {
+                        // ≈—”«· —”«·… ·ﬂ· «·»—‰«„Ã ≈‰ ›ÌÂ ›Ê·œ— « › Õ
+                        var path = folders[0].Path.LocalPath;
+                        WeakReferenceMessenger.Default.Send(new FolderOpenedMessage(path));
+                    }
+                }
+            }
         }
 
         private async void OpenFile_Click(object? sender, RoutedEventArgs e)
@@ -160,6 +188,39 @@ namespace VisualEditorApp.Views
 
                 //  €ÌÌ— ·Ê‰ «·“—«— ·· ‰»ÌÂ
                 tb.Content = (tb.IsChecked ?? false) ? "RUNNING (Live)" : "Preview Mode";
+            }
+        }
+
+
+
+
+
+        public async void Receive(OpenFileMessage message)
+        {
+          
+
+
+            string xmlText = await System.IO.File.ReadAllTextAsync(message.FilePath);
+
+            // 2. «·”Õ— «·„⁄„«—Ì:  ‰ŸÌ› «·‹ XAML „‰ √Ì ﬂÊœ Ì”»» Crash ›Ì Ê÷⁄ «· ‘€Ì·
+            string cleanXmlText = SanitizeXaml(xmlText);
+
+            // 3.  „—Ì— «·‰’ «·‰ŸÌ› ··„Õ—ﬂ
+            var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(cleanXmlText);
+
+            if (parsedObject is Control rootControl)
+            {
+                Control elementToLoad = rootControl;
+
+                if (rootControl is Window window && window.Content is Control windowContent)
+                {
+                    window.Content = null;
+                    elementToLoad = windowContent;
+                }
+
+                WorkspaceView.Instance?.LoadDesign(elementToLoad);
+                // ≈—”«· «·‰’ ··Ê—ﬂ ”»Ì” ·ÌŸÂ— ›Ì «·„Õ—— Ê«· ’„Ì„ „⁄«
+                WorkspaceView.Instance?.SetXamlContent(xmlText);
             }
         }
     }

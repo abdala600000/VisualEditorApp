@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:VisualEditorApp"
+             xmlns:viewmodels="using:VisualEditorApp.ViewModels"
+             x:Class="VisualEditorApp.SolutionExplorerView"
+             x:DataType="viewmodels:SolutionExplorerTool"> 
+
+             <UserControl.Resources>
+    <local:IconToPathConverter x:Key="IconPathConv"/>
+    <local:IconColorConverter x:Key="IconColorConv"/>
+</UserControl.Resources>
+             <DockPanel Background="#F3F3F3">
+
+
+        <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="0,0,0,1" Padding="2">
+            <TextBox Watermark="Search Solution..." Height="24" FontSize="11"/>
+        </Border>
+
+        <TreeView Name="SolutionTree" ItemsSource="{Binding Items}" DoubleTapped="SolutionTree_DoubleTapped" BorderThickness="0">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate x:DataType="local:SolutionItem" ItemsSource="{Binding Children}">
+                   <StackPanel Orientation="Horizontal" Spacing="5" Height="24">
+    <PathIcon Width="14" Height="14" 
+              Data="{Binding IconType, Converter={StaticResource IconPathConv}}" 
+              Foreground="{Binding IconType, Converter={StaticResource IconColorConv}}"/>
+    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="12"/>
+</StackPanel>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </DockPanel>
+</UserControl>

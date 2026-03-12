@@ -9,9 +9,6 @@ using VisualEditorApp.ViewModels;
 
 namespace VisualEditorApp.Models
 {
-    public class WorkspaceDocument : Document
-    {
-    }
 
     public class EditorDockFactory : Factory
     {
@@ -27,12 +24,14 @@ namespace VisualEditorApp.Models
             // 1. استخدام الأدوات من الـ ViewModel مباشرة لضمان "وحدة المصدر"
             var toolboxTool = _vm.Toolbox;
             var propertiesTool = _vm.Properties;
+            var solutionExplorerTool= SolutionExplorerTool.Instance;
             var documentOutline = DocumentOutlineTool.Instance;
 
             // 2. تعيين الـ Context لكل أداة (هذا هو السر الذي يجعل الـ DataBinding يشتغل)
             toolboxTool.Context = _vm;
             propertiesTool.Context = _vm;
             documentOutline.Context = _vm;
+            solutionExplorerTool.Context = _vm;
 
             // مساحة العمل (مستند)
             var workspaceDoc = new WorkspaceDocument
@@ -43,12 +42,27 @@ namespace VisualEditorApp.Models
             };
 
             // 3. إنشاء الحاويات (Docks)
-            var leftDock = new ToolDock
+            var leftDock = new ProportionalDock
             {
+
                 Id = "LeftDock",
-                Proportion = 0.2,
-                ActiveDockable = toolboxTool,
-                VisibleDockables = CreateList<IDockable>(toolboxTool)
+                Orientation = Orientation.Vertical,
+                VisibleDockables = CreateList<IDockable>(
+             new ToolDock
+             {
+                 ActiveDockable = documentOutline,
+                 VisibleDockables = CreateList<IDockable>(solutionExplorerTool),
+                 Proportion = 0.5 // نص المساحة للي فوق
+             },
+             new ProportionalDockSplitter(),
+             new ToolDock
+             {
+                 ActiveDockable = propertiesTool,
+                 VisibleDockables = CreateList<IDockable>(toolboxTool),
+                 Proportion = 0.5 // نص المساحة للي تحت
+             }
+             )
+ 
             };
 
             var centerDock = new DocumentDock

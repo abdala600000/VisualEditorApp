@@ -4,7 +4,11 @@
              x:Class="VisualEditorApp.App"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-  
+  <Application.Resources>
+    <StreamGeometry x:Key="ProjectIcon">M12,2L4,5V11C4,16.55 7.84,21.74 13,23C18.16,21.74 22,16.55 22,11V5L14,2M14,4L19,5.88V11C19,15.19 16.59,18.89 13,20C9.41,18.89 7,15.19 7,11V5.88L12,4M12,6L9,11H11V15H13V11H15L12,6Z</StreamGeometry>
+    <StreamGeometry x:Key="FolderIcon">M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z</StreamGeometry>
+    <StreamGeometry x:Key="CSharpIcon">M2,3H22V21H2V3M7,7V17H11V15H9V13H11V11H9V9H11V7H7M13,7V9H15V17H17V7H13Z</StreamGeometry>
+</Application.Resources>
     <Application.Styles>
         <FluentTheme />
       <DockFluentTheme />
