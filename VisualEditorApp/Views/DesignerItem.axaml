@@ -1,12 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="using:VisualEditorApp"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="VisualEditorApp.DesignerItem">
 
 
-   <UserControl.Styles>
+<UserControl.Styles>
         <Style Selector="Thumb.ResizerThumb">
             <Setter Property="Width" Value="10"/>
             <Setter Property="Height" Value="10"/>
@@ -18,23 +19,37 @@
         </Style>
     </UserControl.Styles>
 
-  <Grid Background="Transparent">
+    <Grid Background="Transparent">
         
-        <ContentControl Name="ShapeContainer" />
+        <ContentControl Name="ShapeContainer" Margin="10" />
         
-        <Border Name="HitTestOverlay" Background="Transparent" ZIndex="1" />
+        <Border Name="HitTestOverlay" Background="Transparent" Margin="10" ZIndex="1" />
         
-        <Grid Name="AdornerLayer" IsVisible="False" ZIndex="2">
-            <Border Name="SelectionBorder" BorderBrush="DodgerBlue" BorderThickness="1" IsHitTestVisible="False" />
+        <Grid Name="AdornerLayer" IsVisible="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type local:DesignerItem}}}" ZIndex="2">
+            
+            <Border Name="SelectionBorder" BorderBrush="DodgerBlue" BorderThickness="1" Margin="10" IsHitTestVisible="False" />
             
             <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" 
-                   Cursor="TopLeftCorner" DragDelta="Resize_DragDelta"/>
+                   Margin="-5,-5,0,0" Cursor="TopLeftCorner" DragDelta="Resize_DragDelta"/>
+                   
             <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" 
-                   Cursor="TopRightCorner" DragDelta="Resize_DragDelta"/>
+                   Margin="0,-5,-5,0" Cursor="TopRightCorner" DragDelta="Resize_DragDelta"/>
+                   
             <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-                   Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta"/>
+                   Margin="-5,0,0,-5" Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta"/>
+                   
             <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-                   Cursor="BottomRightCorner" DragDelta="Resize_DragDelta"/>
+                   Margin="0,0,-5,-5" Cursor="BottomRightCorner" DragDelta="Resize_DragDelta"/>
+            
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-30,0,0">
+                <Line StartPoint="0,0" EndPoint="0,20" Stroke="DodgerBlue" StrokeThickness="1"/>
+                <Ellipse Name="RotationHandle" Width="14" Height="14" Fill="DodgerBlue" Stroke="White" StrokeThickness="1" 
+                         Cursor="Hand"
+                         PointerPressed="RotationHandle_PointerPressed"
+                         PointerMoved="RotationHandle_PointerMoved"
+                         PointerReleased="RotationHandle_PointerReleased"/>
+            </StackPanel>
+            
         </Grid>
         
     </Grid>
