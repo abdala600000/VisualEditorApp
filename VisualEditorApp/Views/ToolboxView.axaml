@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="VisualEditorApp.ToolboxView">
+<StackPanel Margin="10" Spacing="10">
+        <TextBlock Text="Basic Tools" FontWeight="Bold" FontSize="16"/>
+        <Button Name="AddRectButton" Content="Add Rectangle" HorizontalAlignment="Stretch" Click="AddRectButton_Click"/>
+        <Button Name="AddCircleButton" Content="Add Circle" HorizontalAlignment="Stretch" Click="AddCircleButton_Click"/>
+    </StackPanel>
+</UserControl>

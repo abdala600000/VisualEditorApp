@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VisualEditorApp.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="using:VisualEditorApp.Models"
+        xmlns:tools="using:VisualEditorApp.Models.Tools"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="VisualEditorApp.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        xmlns:dock="clr-namespace:Dock.Avalonia.Controls;assembly=Dock.Avalonia"
+        xmlns:dockModel="clr-namespace:Dock.Model.Controls;assembly=Dock.Model"
+        xmlns:local="using:VisualEditorApp"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Avalonia Visual Editor" Width="1000" Height="600"
+         >
+       <Window.DataTemplates>
+        
+        <DataTemplate DataType="{x:Type models:WorkspaceDocument}">
+            <local:WorkspaceView />
+        </DataTemplate>
+        
+        <DataTemplate DataType="{x:Type tools:ToolboxTool}">
+            <local:ToolboxView />
+        </DataTemplate>
+
+    </Window.DataTemplates>
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+<DockPanel>
+        
+       <Menu DockPanel.Dock="Top" Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="0,0,0,1">
+            
+            <MenuItem Header="File">
+                <MenuItem Header="New Project..." Click="NewProject_Click"/>
+                <MenuItem Header="Open Project..." Click="OpenProject_Click"/>
+                <Separator/>
+                <MenuItem Header="Open XML / XAML File..." Click="OpenFile_Click"/>
+            </MenuItem>
+            
+            <MenuItem Header="Run">
+                <MenuItem Header="Run Project" Click="RunProject_Click"/>
+            </MenuItem>
+            
+        </Menu>
+
+        <dock:DockControl Name="MainDockControl" />
+        
+    </DockPanel>
+</Window>
