@@ -11,6 +11,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml;
 using VisualEditorApp.Models;
 using VisualEditorApp.Models.Tools;
 using VisualEditorApp.ViewModels;
@@ -24,6 +25,11 @@ public partial class WorkspaceView : UserControl
     private bool _isDraggingControl = false;
     private Point _dragStartMousePosition;
     private Point _dragStartControlPosition;
+
+    // تعريف النواة الجديدة كمتغير على مستوى اللوحة
+    private readonly VisualEditorApp.Core.XmlToAvaloniaBuilder _xmlBuilder = new();
+    private bool _hasMoved = false; // المتغير الجديد عشان نراقب الحركة
+   
     public WorkspaceView()
     {
         InitializeComponent();
@@ -199,20 +205,13 @@ public partial class WorkspaceView : UserControl
     }
 
 
-    // 1. بداية التحديد والحركة (لما تدوس على الكنترول)
     private void DesignSurface_PreviewPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (_isPreviewMode || !e.GetCurrentPoint(DesignSurface).Properties.IsLeftButtonPressed) return;
 
-        // لو إنت ضاغط على أي حاجة تبع الـ AdornerCanvas (المربعات)، اخرج فوراً وسيبها تكبر الكنترول
-        // السطر الصحيح في Avalonia 11
         if (e.Source is Visual sourceVisual && (sourceVisual == AdornerCanvas || AdornerCanvas.IsVisualAncestorOf(sourceVisual)))
-        {
-            return; // لو الماوس فوق المربعات الزرقاء، سيبها تعمل Resize وماتعملش Drag
-        }
+            return;
 
-
-        // استخدام الدالة الجديدة لاصطياد الكنترول
         Control? clickedControl = GetSelectableControl(e.Source as Control);
 
         if (clickedControl != null)
@@ -220,11 +219,10 @@ public partial class WorkspaceView : UserControl
             SelectControl(clickedControl);
             e.Handled = true;
 
-            // بدء عملية السحب وحفظ الإحداثيات
             _isDraggingControl = true;
-            _dragStartMousePosition = e.GetPosition(DesignSurface); // المرجع بتاعنا هو اللوحة كلها
+            _hasMoved = false; // تصفير الحركة مع كل ضغطة جديدة
+            _dragStartMousePosition = e.GetPosition(DesignSurface);
 
-            // لو الكنترول جوه Canvas بناخد الـ Left/Top، لو جوه حاجة تانية بناخد الـ Margin
             if (clickedControl.Parent is Canvas)
             {
                 double left = Canvas.GetLeft(clickedControl);
@@ -242,18 +240,20 @@ public partial class WorkspaceView : UserControl
         }
     }
 
-    // 2. أثناء تحريك الماوس (سحب الكنترول)
     private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
     {
         if (_isDraggingControl && _selectedControl != null)
         {
             var currentMousePos = e.GetPosition(DesignSurface);
-
-            // حساب مقدار السحب (الفرق بين مكان الماوس القديم والجديد)
             double deltaX = currentMousePos.X - _dragStartMousePosition.X;
             double deltaY = currentMousePos.Y - _dragStartMousePosition.Y;
 
-            // تطبيق الحركة بناءً على نوع الحاوية (Parent)
+            // التأكد إن الماوس اتحرك فعلاً مش مجرد "رعشة"
+            if (System.Math.Abs(deltaX) > 1 || System.Math.Abs(deltaY) > 1)
+            {
+                _hasMoved = true; // كده إحنا اتأكدنا إن حصل سحب
+            }
+
             if (_selectedControl.Parent is Canvas)
             {
                 Canvas.SetLeft(_selectedControl, _dragStartControlPosition.X + deltaX);
@@ -261,22 +261,18 @@ public partial class WorkspaceView : UserControl
             }
             else
             {
-                // لو جوه StackPanel أو Grid، بنحركه عن طريق تعديل الـ Margin
                 _selectedControl.Margin = new Avalonia.Thickness(
                     _dragStartControlPosition.X + deltaX,
                     _dragStartControlPosition.Y + deltaY, 0, 0);
-
-                // تأكيد المحاذاة عشان الـ Margin يشتغل صح
                 _selectedControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
                 _selectedControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
             }
 
-            UpdateAdornerPosition(); // الإطار الأزرق يمشي مع الكنترول
+            UpdateAdornerPosition();
             e.Handled = true;
         }
     }
 
-    // 3. إفلات الكنترول داخل اللوحة
     private void DesignSurface_PreviewPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (_isDraggingControl)
@@ -284,11 +280,13 @@ public partial class WorkspaceView : UserControl
             _isDraggingControl = false;
             e.Handled = true;
 
-            // السطر الجديد
-            UpdateXamlEditor();
+            // هنا السر: هنكتب الكود بس لو الكنترول اتحرك فعلياً
+            if (_hasMoved)
+            {
+                UpdateXamlEditor();
+            }
         }
     }
-
     // دالة مساعدة لمعرفة الكنترول المباشر للـ Canvas
     private Control? GetTopLevelControl(Control element)
     {
@@ -454,45 +452,85 @@ public partial class WorkspaceView : UserControl
         RefreshDesigner(XamlEditor.Text);
     }
     // --- مصفاة تنظيف الـ XAML (XAML Sanitizer) ---
-    private string SanitizeXaml(string originalXaml)
-    {
-        string clean = originalXaml;
+  private string SanitizeXaml(string originalXaml)
+{
+    string clean = originalXaml;
 
-        // 1. تحويل CompiledBinding إلى Binding عادي لكي يعمل وقت التصميم
-        clean = Regex.Replace(clean, @"\{CompiledBinding\b", "{Binding");
+    // 1. مسح الـ x:Class
+    clean = Regex.Replace(clean, @"\s+x:Class=""[^""]*""", "");
 
-        // 2. إزالة x:Class (لأنها تتطلب كود خلفي غير موجود أثناء التصميم)
-        clean = Regex.Replace(clean, @"x:Class=""[^""]*""", "");
+    // 2. تحويل CompiledBinding
+    clean = Regex.Replace(clean, @"\{CompiledBinding\b", "{Binding");
 
-        // 3. إزالة الأحداث (Events) التي تبحث عن دوال في الكود الخلفي
-        clean = Regex.Replace(clean, @"\s+(Click|PointerPressed|PointerReleased|KeyDown|KeyUp|Loaded|PointerMoved)=""[^""]*""", "");
+    // 3. مسح الأحداث (Events)
+    clean = Regex.Replace(clean, @"\s+[A-Za-z]*(?:Click|Pressed|Released|Enter|Leave|Move|Wheel|Down|Up|Changed|Loaded|Unloaded|Opened|Closed|Tapped|TextInput|Focus|Checked|Unchecked)=""[^""]*""", "");
 
-        // ملاحظة هامة: لقد قمنا بإزالة مسح x:Name من هنا، 
-        // لأنك تستخدم ElementName bindings والتي تعتمد على وجود الأسماء.
-        // بدلاً من ذلك، سنمسح x:Name من العناصر غير المرئية فقط (مثل Transforms) 
-        // أو نترك Avalonia تتعامل مع الأسماء الصحيحة للكنترولات.
-        clean = Regex.Replace(clean, @"<([^>]+)\s+x:Name=""[^""]*""([^>]*)>\s*</\1>", "<$1$2></$1>"); // تنظيف أولي للـ Transforms
+    // ======== الإضافة الجديدة: حماية اللوحة من الصور المفقودة ========
+    // الفلتر ده بيمسح خاصية Source="" لو كانت مسار محلي أو avares:// 
+    // وبيسيبها لو كانت رابط من النت (http أو https) عشان لو حبيت تعرض صورة من النت في التصميم
+    clean = Regex.Replace(clean, @"\s+Source=""(?!(http|https)://)[^""]*""", "");
+    
+    // (اختياري) حماية إضافية لخصائص الصور التانية زي الفراشي (ImageBrush)
+    clean = Regex.Replace(clean, @"<ImageBrush\s+ImageSource=""(?!(http|https)://)[^""]*""", "<ImageBrush ");
 
-        return clean;
-    }
+    return clean;
+}
     private void RefreshDesigner(string xaml)
     {
-        //try
-        //{
-        //    // استخدام محرك Avalonia الأصلي لتحويل النص لكنترول
-        //    // ملاحظة: تأكد من وجود دالة SanitizeXaml التي عملناها سابقاً لتنظيف الكود
-        //    string cleanXml = SanitizeXaml(xaml);
-        //    var parsed = Avalonia.Markup.Xaml.AvaloniaRuntimeXamlLoader.Parse<Control>(cleanXml);
+        if (string.IsNullOrWhiteSpace(xaml))
+        {
+            ClearWorkspace();
+            return;
+        }
 
-        //    if (parsed != null)
-        //    {
-        //        LoadDesign(parsed);
-        //    }
-        //}
-        //catch
-        //{
-        //    // نتجاهل الأخطاء أثناء ما المستخدم لسه بيكتب كود ناقص
-        //}
+        try
+        {
+            // 1. تنظيف الكود (اختياري بس مهم لو جايب كود من بره)
+            string cleanXml = SanitizeXaml(xaml);
+
+            // 2. تحويل النص إلى كنترول حقيقي
+            var parsedControl = AvaloniaRuntimeXamlLoader.Parse<object>(cleanXml);
+
+            if (parsedControl != null)
+            {
+                // 3. خدعة احترافية: 
+                // المحرك بتاعنا بيولد كود محاط بـ <UserControl>
+                // إحنا محتاجين ناخد المحتوى اللي جواه (زي الـ Canvas) عشان أحداث الماوس تفضل شغالة صح
+
+
+                if (parsedControl is Control rootControl)
+                {
+                    Control elementToLoad = rootControl;
+
+                    if (rootControl is Window window && window.Content is Control windowContent)
+                    {
+                        window.Content = null;
+                        DesignSurface.Content = windowContent;
+                    }
+                    else
+                    {
+                        DesignSurface.Content = parsedControl;
+                    }
+                }
+
+
+ 
+                // 4. مسح التحديد القديم (عشان الكنترولات القديمة اتمسحت من الذاكرة)
+                ClearSelection();
+
+                // 5. تحديث شجرة العناصر (Document Outline)
+                if (DesignSurface.Content is Control rootControl1)
+                {
+                    UpdateOutline(rootControl1);
+                }
+            }
+        }
+        catch
+        {
+            // 🚫 السكوت من ذهب هنا:
+            // هنتجاهل الأخطاء لأن المستخدم ممكن يكون بيكتب <Butt ولسه مكملش الكلمة
+            // فمش منطقي نطلع له Error مع كل حرف بيكتبه.
+        }
     }
 
     private Control? GetSelectableControl(Control? element)
@@ -588,21 +626,18 @@ public partial class WorkspaceView : UserControl
 
     private void BuildControlXaml(Control control, System.Text.StringBuilder sb, int indentLevel)
     {
-        // عمل مسافات بادئة (Indentation) عشان الكود يطلع شكله منظم
         string indent = new string(' ', indentLevel * 4);
         string typeName = control.GetType().Name;
 
         sb.Append($"{indent}<{typeName}");
 
-        // --- 1. استخراج الخصائص الأساسية ---
+        // --- 1. الخصائص الأساسية ---
         if (!double.IsNaN(control.Width)) sb.Append($" Width=\"{(int)control.Width}\"");
         if (!double.IsNaN(control.Height)) sb.Append($" Height=\"{(int)control.Height}\"");
 
-        // استخراج الـ Margin (لو الكنترول جوه StackPanel أو Grid)
         if (control.Margin != default)
-            sb.Append($" Margin=\"{(int)control.Margin.Left},{(int)control.Margin.Top},{(int)control.Margin.Right},{(int)control.Margin.Bottom}\"");
+            sb.Append($" Margin=\"{control.Margin.Left},{control.Margin.Top},{control.Margin.Right},{control.Margin.Bottom}\"");
 
-        // استخراج الإحداثيات (لو الكنترول جوه Canvas)
         if (control.Parent is Canvas)
         {
             double left = Canvas.GetLeft(control);
@@ -611,51 +646,141 @@ public partial class WorkspaceView : UserControl
             if (!double.IsNaN(top)) sb.Append($" Canvas.Top=\"{(int)top}\"");
         }
 
-        // --- 2. معالجة المحتوى الداخلي والأبناء (Children) ---
+        // إضافة بعض الخصائص للـ Border
+        if (control is Border border && border.CornerRadius != default)
+        {
+            sb.Append($" CornerRadius=\"{border.CornerRadius.TopLeft}\"");
+        }
+
         bool hasChildren = false;
 
-        // لو الكنترول Panel وبيشيل عناصر كتير (زي Grid, StackPanel, Canvas)
+        // --- 2. معالجة الأبناء (Children) ---
+        // أ. لو كنترول بيشيل لستة (Grid, StackPanel)
         if (control is Panel panel && panel.Children.Count > 0)
         {
             sb.AppendLine(">");
             foreach (var child in panel.Children)
             {
-                if (child is Control childCtrl && childCtrl.Name != "SelectionAdorner") // نتجاهل الإطار الأزرق
-                {
+                if (child is Control childCtrl && childCtrl.Name != "SelectionAdorner")
                     BuildControlXaml(childCtrl, sb, indentLevel + 1);
-                }
             }
             hasChildren = true;
         }
-        // لو الكنترول بيشيل عنصر واحد (زي Border, Button)
+        // ب. لو كنترول بيشيل محتوى واحد (Button)
         else if (control is ContentControl cc && cc.Content != null)
         {
+            sb.AppendLine(">");
             if (cc.Content is Control childCtrl)
             {
-                sb.AppendLine(">");
                 BuildControlXaml(childCtrl, sb, indentLevel + 1);
-                hasChildren = true;
             }
-            else // لو المحتوى مجرد نص (مثلاً Button جواه كلمة "Click")
+            else
             {
-                sb.Append($" Content=\"{cc.Content}\"");
+                sb.AppendLine($"{indent}    {cc.Content}");
             }
+            hasChildren = true;
         }
-        // لو الكنترول عبارة عن TextBlock
+        // ج. حل مشكلة الـ Border في Avalonia 11
+        else if (control is Border border1 && border1.Child != null)
+        {
+            sb.AppendLine(">");
+            if (border1.Child is Control childCtrl && childCtrl.Name != "SelectionAdorner")
+            {
+                BuildControlXaml(childCtrl, sb, indentLevel + 1);
+            }
+            hasChildren = true;
+        }
+        // د. لو النص العادي
         else if (control is TextBlock tb && !string.IsNullOrEmpty(tb.Text))
         {
-            sb.Append($" Text=\"{tb.Text}\"");
+            sb.AppendLine(">");
+            sb.AppendLine($"{indent}    {tb.Text}");
+            hasChildren = true;
         }
 
-        // --- 3. إغلاق التاج (Tag Closure) ---
+        // --- 3. إغلاق التاج ---
         if (hasChildren)
         {
             sb.AppendLine($"{indent}</{typeName}>");
         }
         else
         {
-            sb.AppendLine(" />"); // إغلاق ذاتي لو الكنترول فاضي
+            sb.AppendLine(" />");
         }
     }
+
+
+    private void UpdateControlInXaml(Control control)
+{
+    if (string.IsNullOrEmpty(XamlEditor.Text) || control == null || control == DesignSurface.Content) return;
+
+    string xaml = XamlEditor.Text;
+    string typeName = control.GetType().Name;
+
+    // 1. تحديد القيم الجديدة
+    string newWidth = double.IsNaN(control.Width) ? "" : ((int)control.Width).ToString();
+    string newHeight = double.IsNaN(control.Height) ? "" : ((int)control.Height).ToString();
+    
+    // 2. البحث عن تاج الكنترول في النص
+    // (ده تطبيق مبسط لفكرة الـ DesignItem، في المشاريع الضخمة بنستخدم XML Parser)
+    var regex = new System.Text.RegularExpressions.Regex($@"<{typeName}[^>]*>");
+    var match = regex.Match(xaml);
+
+    if (match.Success)
+    {
+        string originalTag = match.Value;
+        string updatedTag = originalTag;
+
+        // 3. تحديث العرض (Width)
+        if (!string.IsNullOrEmpty(newWidth))
+            updatedTag = UpdateOrAddAttribute(updatedTag, "Width", newWidth);
+
+        // 4. تحديث الطول (Height)
+        if (!string.IsNullOrEmpty(newHeight))
+            updatedTag = UpdateOrAddAttribute(updatedTag, "Height", newHeight);
+
+        // 5. تحديث المكان (لو جوه Canvas)
+        if (control.Parent is Canvas)
+        {
+            double left = Canvas.GetLeft(control);
+            double top = Canvas.GetTop(control);
+            if (!double.IsNaN(left)) updatedTag = UpdateOrAddAttribute(updatedTag, "Canvas.Left", ((int)left).ToString());
+            if (!double.IsNaN(top)) updatedTag = UpdateOrAddAttribute(updatedTag, "Canvas.Top", ((int)top).ToString());
+        }
+        // تحديث المكان (لو جوه StackPanel أو Grid)
+        else if (control.Margin != default)
+        {
+            string marginStr = $"{(int)control.Margin.Left},{(int)control.Margin.Top},0,0";
+            updatedTag = UpdateOrAddAttribute(updatedTag, "Margin", marginStr);
+        }
+
+        // 6. استبدال التاج القديم بالجديد في المحرر
+        if (originalTag != updatedTag)
+        {
+            _isInternalUpdate = true;
+            XamlEditor.Text = xaml.Substring(0, match.Index) + updatedTag + xaml.Substring(match.Index + match.Length);
+            _isInternalUpdate = false;
+        }
+    }
+}
+
+// دالة مساعدة لتحديث أو إضافة خاصية جوه التاج
+private string UpdateOrAddAttribute(string tag, string attributeName, string newValue)
+{
+    var regex = new System.Text.RegularExpressions.Regex($@"{attributeName}=""[^""]*""");
+    if (regex.IsMatch(tag))
+    {
+        // لو الخاصية موجودة، نعدلها
+        return regex.Replace(tag, $"{attributeName}=\"{newValue}\"");
+    }
+    else
+    {
+        // لو مش موجودة، نضيفها قبل قفلة التاج (> أو />)
+        if (tag.EndsWith("/>"))
+            return tag.Insert(tag.Length - 2, $" {attributeName}=\"{newValue}\"");
+        else
+            return tag.Insert(tag.Length - 1, $" {attributeName}=\"{newValue}\" ");
+    }
+}
 }
 

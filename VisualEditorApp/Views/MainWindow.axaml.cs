@@ -124,18 +124,26 @@ namespace VisualEditorApp.Views
         {
             string clean = originalXaml;
 
-            // 1. ≈“«·… x:Class (·√‰Â«   ÿ·» ﬂÊœ Œ·›Ì €Ì— „ÊÃÊœ √À‰«¡ «· ’„Ì„)
-            clean = Regex.Replace(clean, @"x:Class=""[^""]*""", "");
+            // 1. „”Õ «·‹ x:Class
+            clean = Regex.Replace(clean, @"\s+x:Class=""[^""]*""", "");
 
-            // 2. ≈“«·… x:Name ( ”»» „‘«ﬂ· „⁄ «·⁄‰«’— €Ì— «·„—∆Ì… „À· Transforms)
-            clean = Regex.Replace(clean, @"x:Name=""[^""]*""", "");
+            // 2.  ÕÊÌ· CompiledBinding
+            clean = Regex.Replace(clean, @"\{CompiledBinding\b", "{Binding");
 
-            // 3. ≈“«·… √Õœ«À «·„«Ê” Ê«·ﬂÌ»Ê—œ «·‘«∆⁄… (·√‰Â« ” »ÕÀ ⁄‰ œÊ«· ›Ì «·ﬂÊœ «·Œ·›Ì Ê ‰Â«—)
-            // „À· Click="Btn_Click" √Ê KeyDown="Window_KeyDown"
-            clean = Regex.Replace(clean, @"\s+(Click|PointerPressed|PointerReleased|KeyDown|KeyUp|Loaded|PointerMoved)=""[^""]*""", "");
+            // 3. „”Õ «·√Õœ«À (Events)
+            clean = Regex.Replace(clean, @"\s+[A-Za-z]*(?:Click|Pressed|Released|Enter|Leave|Move|Wheel|Down|Up|Changed|Loaded|Unloaded|Opened|Closed|Tapped|TextInput|Focus|Checked|Unchecked)=""[^""]*""", "");
 
-            // 4. ≈“«·… √Ì „”«›«  “«∆œ…  —ﬂÂ« «· ‰ŸÌ›
-            clean = Regex.Replace(clean, @"\s+>", ">");
+            // ======== «·≈÷«›… «·ÃœÌœ…: Õ„«Ì… «··ÊÕ… „‰ «·’Ê— «·„›ﬁÊœ… ========
+            // «·›· — œÂ »Ì„”Õ Œ«’Ì… Source="" ·Ê ﬂ«‰  „”«— „Õ·Ì √Ê avares:// 
+            // Ê»Ì”Ì»Â« ·Ê ﬂ«‰  —«»ÿ „‰ «·‰  (http √Ê https) ⁄‘«‰ ·Ê Õ»Ì   ⁄—÷ ’Ê—… „‰ «·‰  ›Ì «· ’„Ì„
+            clean = Regex.Replace(clean, @"\s+Source=""(?!(http|https)://)[^""]*""", "");
+
+            // («Œ Ì«—Ì) Õ„«Ì… ≈÷«›Ì… ·Œ’«∆’ «·’Ê— «· «‰Ì… “Ì «·›—«‘Ì (ImageBrush)
+            clean = Regex.Replace(clean, @"<ImageBrush\s+ImageSource=""(?!(http|https)://)[^""]*""", "<ImageBrush ");
+
+            // ======== «·≈÷«›… «·ÃœÌœ…: œ—⁄ Õ„«Ì… «·ŒÿÊÿ «·„Œ’’… ========
+            // «·›· — œÂ »Ì„”Õ Œ«’Ì… FontFamily »«·ﬂ«„· ·Ê ﬂ«‰ ÃÊ«Â« „”«— avares √Ê resm √Ê ⁄·«„… # » «⁄… «·ŒÿÊÿ
+            clean = Regex.Replace(clean, @"\s+FontFamily=""[^""]*(avares://|resm://|#|\.ttf|\.otf)[^""]*""", "");
 
             return clean;
         }
