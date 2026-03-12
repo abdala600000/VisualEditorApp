@@ -6,6 +6,7 @@
         xmlns:models="using:VisualEditorApp.Models"
         xmlns:tools="using:VisualEditorApp.Models.Tools"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         x:Class="VisualEditorApp.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         xmlns:dock="clr-namespace:Dock.Avalonia.Controls;assembly=Dock.Avalonia"
@@ -25,6 +26,9 @@
         </DataTemplate>
          <DataTemplate DataType="{x:Type tools:PropertiesTool}">
             <local:PropertiesView />
+        </DataTemplate>
+            <DataTemplate DataType="{x:Type tools:DocumentOutlineTool}">
+            <local:DocumentOutlineView />
         </DataTemplate>
     </Window.DataTemplates>
     <Design.DataContext>

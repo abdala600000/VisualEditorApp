@@ -4,31 +4,49 @@ using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using VisualEditorApp.Models.Tools;
+using VisualEditorApp.ViewModels;
 
 namespace VisualEditorApp.Models
 {
-    // أضفنا هذا الكلاس الصغير لتمثيل مستند مساحة العمل
     public class WorkspaceDocument : Document
     {
     }
 
     public class EditorDockFactory : Factory
     {
+        private readonly MainWindowViewModel _vm;
+
+        public EditorDockFactory(MainWindowViewModel vm)
+        {
+            _vm = vm;
+        }
+
         public override IRootDock CreateLayout()
         {
-            // 1. إنشاء المحتوى الداخلي (الأدوات ومساحة العمل)
-            var toolboxTool = new ToolboxTool { Id = "Toolbox", Title = "Toolbox" };
-            var workspaceDoc = new WorkspaceDocument { Id = "Workspace", Title = "Workspace" };
-            // إنشاء أداة الخصائص
-            var propertiesTool = new PropertiesTool { Id = "Properties", Title = "Properties" };
+            // 1. استخدام الأدوات من الـ ViewModel مباشرة لضمان "وحدة المصدر"
+            var toolboxTool = _vm.Toolbox;
+            var propertiesTool = _vm.Properties;
+            var documentOutline = DocumentOutlineTool.Instance;
 
-            // 2. إنشاء الحاويات (Docks) ووضع المحتوى بداخلها كـ Active (هذا ما كان ينقصنا لكي تظهر)
+            // 2. تعيين الـ Context لكل أداة (هذا هو السر الذي يجعل الـ DataBinding يشتغل)
+            toolboxTool.Context = _vm;
+            propertiesTool.Context = _vm;
+            documentOutline.Context = _vm;
+
+            // مساحة العمل (مستند)
+            var workspaceDoc = new WorkspaceDocument
+            {
+                Id = "Workspace",
+                Title = "Workspace",
+                Context = _vm // ربط مساحة العمل بالـ ViewModel الرئيسي
+            };
+
+            // 3. إنشاء الحاويات (Docks)
             var leftDock = new ToolDock
             {
                 Id = "LeftDock",
-                Proportion = 0.2, // تأخذ 20% من مساحة الشاشة
+                Proportion = 0.2,
                 ActiveDockable = toolboxTool,
                 VisibleDockables = CreateList<IDockable>(toolboxTool)
             };
@@ -36,35 +54,34 @@ namespace VisualEditorApp.Models
             var centerDock = new DocumentDock
             {
                 Id = "CenterDock",
-                Proportion = 0.6, // تأخذ 60% من مساحة الشاشة
+                Proportion = 0.6,
                 ActiveDockable = workspaceDoc,
                 VisibleDockables = CreateList<IDockable>(workspaceDoc)
             };
 
-            // وضعها في الحاوية اليمنى وتفعيلها
             var rightDock = new ToolDock
             {
                 Id = "RightDock",
-                Proportion = 0.2, // تأخذ 20% من الشاشة
-                ActiveDockable = propertiesTool,
-                VisibleDockables = CreateList<IDockable>(propertiesTool)
+                Proportion = 0.2,
+                ActiveDockable = documentOutline,
+                // نضع الشجرة والخصائص معاً في القائمة اليمنى
+                VisibleDockables = CreateList<IDockable>(documentOutline, propertiesTool)
             };
 
-            // 3. تجميع الحاويات في هيكل نسبي مقسم
+            // 4. تجميع الهيكل النهائي
             var mainLayout = new ProportionalDock
             {
                 Id = "MainLayout",
                 Orientation = Orientation.Horizontal,
                 VisibleDockables = CreateList<IDockable>(
                     leftDock,
-                    new ProportionalDockSplitter(), // الفاصل القابل للسحب
+                    new ProportionalDockSplitter(),
                     centerDock,
-                    new ProportionalDockSplitter(), // الفاصل القابل للسحب
+                    new ProportionalDockSplitter(),
                     rightDock
                 )
             };
 
-            // 4. تعيين الجذر الأساسي
             var root = CreateRootDock();
             root.Id = "Root";
             root.ActiveDockable = mainLayout;
@@ -76,7 +93,20 @@ namespace VisualEditorApp.Models
 
         public override void InitLayout(IDockable layout)
         {
-            ContextLocator = new Dictionary<string, Func<object?>>();
+            // إعداد محددات السياق لضمان عمل نظام الـ Docking بسلاسة عند السحب والإفلات
+            this.ContextLocator = new Dictionary<string, Func<object?>>
+            {
+                ["Root"] = () => _vm,
+                ["MainLayout"] = () => _vm,
+                ["LeftDock"] = () => _vm,
+                ["RightDock"] = () => _vm,
+                ["CenterDock"] = () => _vm,
+                ["Workspace"] = () => _vm,
+                ["DocumentOutline"] = () => _vm.DocumentOutline,
+                ["Properties"] = () => _vm.Properties,
+                ["Toolbox"] = () => _vm.Toolbox
+            };
+
             base.InitLayout(layout);
         }
     }
