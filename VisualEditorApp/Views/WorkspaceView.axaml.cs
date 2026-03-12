@@ -233,22 +233,22 @@ public partial class WorkspaceView : UserControl
     }
     private void RefreshDesigner(string xaml)
     {
-        try
-        {
-            // ÇÓÊÎÏÇã ãÍÑß Avalonia ÇáÃÕáí áÊÍæíá ÇáäÕ áßäÊÑæá
-            // ãáÇÍÙÉ: ÊÃßÏ ãä æÌæÏ ÏÇáÉ SanitizeXaml ÇáÊí ÚãáäÇåÇ ÓÇÈŞÇğ áÊäÙíİ ÇáßæÏ
-            string cleanXml = SanitizeXaml(xaml);
-            var parsed = Avalonia.Markup.Xaml.AvaloniaRuntimeXamlLoader.Parse<Control>(cleanXml);
+        //try
+        //{
+        //    // ÇÓÊÎÏÇã ãÍÑß Avalonia ÇáÃÕáí áÊÍæíá ÇáäÕ áßäÊÑæá
+        //    // ãáÇÍÙÉ: ÊÃßÏ ãä æÌæÏ ÏÇáÉ SanitizeXaml ÇáÊí ÚãáäÇåÇ ÓÇÈŞÇğ áÊäÙíİ ÇáßæÏ
+        //    string cleanXml = SanitizeXaml(xaml);
+        //    var parsed = Avalonia.Markup.Xaml.AvaloniaRuntimeXamlLoader.Parse<Control>(cleanXml);
 
-            if (parsed != null)
-            {
-                LoadDesign(parsed);
-            }
-        }
-        catch
-        {
-            // äÊÌÇåá ÇáÃÎØÇÁ ÃËäÇÁ ãÇ ÇáãÓÊÎÏã áÓå ÈíßÊÈ ßæÏ äÇŞÕ
-        }
+        //    if (parsed != null)
+        //    {
+        //        LoadDesign(parsed);
+        //    }
+        //}
+        //catch
+        //{
+        //    // äÊÌÇåá ÇáÃÎØÇÁ ÃËäÇÁ ãÇ ÇáãÓÊÎÏã áÓå ÈíßÊÈ ßæÏ äÇŞÕ
+        //}
     }
 
 

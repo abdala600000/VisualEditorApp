@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using VisualEditorApp.Models;
+using VisualEditorApp.Models.Tools;
+using VisualEditorApp.ViewModels;
 
 namespace VisualEditorApp;
 
@@ -17,9 +19,11 @@ public partial class DocumentOutlineView : UserControl
         {
             if (selectedNode.RelatedControl != null)
             {
-                // ÇÓÊÏÚÇÁ ÇáãÇßÑæ áÊÍÏíÏ ÇáÚäÕÑ İí ãäØŞÉ ÇáÚãá
-                // ÇÓÊÎÏãäÇ Instance áÓåæáÉ ÇáæÕæá Èíä ÇáäæÇİĞ ÇáãäİÕáÉ
+                // 1. ÊÍÏíÏ ÇáÚäÕÑ İí ÇáÏíÒÇíäÑ (ÅÙåÇÑ ÇáãÑÈÚÇÊ ÇáÒÑŞÇÁ)
                 WorkspaceView.Instance?.SelectControl(selectedNode.RelatedControl);
+                // 2. ÇÓÊÏÚÇÁ ÇáßæÏ ÈÊÇÚß ÃäÊ (PropertiesView) æÊãÑíÑ ÇáÚäÕÑ áå
+                PropertiesView.Instance?.SetSelectedElement(selectedNode.RelatedControl);
+
             }
         }
     }

@@ -7,7 +7,11 @@ namespace VisualEditorApp.Models.Tools
     public class ToolboxTool : Tool
     {
     }
-    public class PropertiesTool : Tool { }
+    public class PropertiesTool : Tool { 
+    
+    
+    
+    }
 
     public class SettingsTool : Tool { }
 

@@ -59,16 +59,27 @@ namespace VisualEditorApp.Models
                 VisibleDockables = CreateList<IDockable>(workspaceDoc)
             };
 
-            var rightDock = new ToolDock
+            var rightPane = new ProportionalDock
             {
-                Id = "RightDock",
-                Proportion = 0.2,
-                ActiveDockable = documentOutline,
-                // نضع الشجرة والخصائص معاً في القائمة اليمنى
-                VisibleDockables = CreateList<IDockable>(documentOutline, propertiesTool)
+                Id = "RightPane",
+                Orientation = Orientation.Vertical,
+                VisibleDockables = CreateList<IDockable>(
+             new ToolDock
+             {
+                 ActiveDockable = documentOutline,
+                 VisibleDockables = CreateList<IDockable>(documentOutline),
+                 Proportion = 0.5 // نص المساحة للي فوق
+             },
+             new ProportionalDockSplitter(),
+             new ToolDock
+             {
+                 ActiveDockable = propertiesTool,
+                 VisibleDockables = CreateList<IDockable>(propertiesTool),
+                 Proportion = 0.5 // نص المساحة للي تحت
+             }
+             )
             };
 
-            // 4. تجميع الهيكل النهائي
             var mainLayout = new ProportionalDock
             {
                 Id = "MainLayout",
@@ -78,7 +89,7 @@ namespace VisualEditorApp.Models
                     new ProportionalDockSplitter(),
                     centerDock,
                     new ProportionalDockSplitter(),
-                    rightDock
+                    rightPane // الجانب اليمين قطعة واحدة بتابات
                 )
             };
 

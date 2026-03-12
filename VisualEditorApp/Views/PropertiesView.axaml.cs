@@ -2,13 +2,29 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reflection;
+using VisualEditorApp.Models;
 
 namespace VisualEditorApp;
 
+public class PropertyItem
+{
+    public string Name { get; set; } = "";
+    public object? Value { get; set; }
+}
+
+public class PropertyGroup
+{
+    public string Key { get; set; } = ""; // ÇÓã ÇáãÌãæÚÉ (Layout, Brushes...)
+    public List<PropertyItem> Items { get; set; } = new();
+}
 public partial class PropertiesView : UserControl
 {
     public static PropertiesView? Instance { get; private set; }
-    private DesignerItem? _currentElement;
+    private Control? _currentElement; // ÊÛííÑ ÇáäæÚ ááßäÊÑæá ÇáÚÇÏí
     private bool _isUpdatingFromCode = false;
 
     public PropertiesView()
@@ -17,41 +33,58 @@ public partial class PropertiesView : UserControl
         Instance = this;
     }
 
-    // åĞå ÇáÏÇáÉ ÓíÊã ÇÓÊÏÚÇÄåÇ ãä ãÓÇÍÉ ÇáÚãá ÚäÏ ÇáäŞÑ Úáì Ãí ÚäÕÑ
-    public void SetSelectedElement(DesignerItem? element)
+    public void SetSelectedElement(Control? element)
     {
-        _currentElement = element;
-        _isUpdatingFromCode = true; // áãäÚ ÊÔÛíá ÍÏË TextChanged ÃËäÇÁ ÇáŞÑÇÁÉ
-
-        if (_currentElement != null)
+        if (element == null || GroupsControl == null)
         {
-            // ÇÓÊÎÑÇÌ ÇÓã ÇáÚäÕÑ ÇáÏÇÎáí (ãËáÇğ Button Ãæ Rectangle)
-            var contentControl = _currentElement.FindControl<ContentControl>("ShapeContainer");
-            ElementTypeText.Text = contentControl?.Content?.GetType().Name ?? "DesignerItem";
-
-            WidthBox.Text = Math.Round(_currentElement.Width, 2).ToString();
-            HeightBox.Text = Math.Round(_currentElement.Height, 2).ToString();
-            LeftBox.Text = Math.Round(Canvas.GetLeft(_currentElement), 2).ToString();
-            TopBox.Text = Math.Round(Canvas.GetTop(_currentElement), 2).ToString();
-        }
-        else
-        {
-            ElementTypeText.Text = "None";
-            WidthBox.Text = ""; HeightBox.Text = ""; LeftBox.Text = ""; TopBox.Text = "";
+            if (GroupsControl != null) GroupsControl.ItemsSource = null;
+            return;
         }
 
+        _isUpdatingFromCode = true;
+
+        // ÇáİáÊÑÉ åäÇ åí ÇáÓÑ
+        var allProps = element.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                        .Where(p => p.CanRead &&
+                                    p.CanWrite &&
+                                    p.GetIndexParameters().Length == 0) // <--- ÇáÓØÑ Ïå åæ Çááí åíÍá ÇáãÔßáÉ
+                        .Select(p => {
+                            try
+                            {
+                                return new PropertyItem
+                                {
+                                    Name = p.Name,
+                                    Value = p.GetValue(element)
+                                };
+                            }
+                            catch
+                            {
+                                return null; // áÊÌäÈ Ãí ÎÇÕíÉ ÊÇäíÉ ÊÖÑÈ ÃËäÇÁ ÇáŞÑÇÁÉ
+                            }
+                        })
+                        .Where(p => p != null)
+                        .Cast<PropertyItem>()
+                        .ToList();
+
+        // ... ÈÇŞí ßæÏ ÇáÊÌãíÚ (Grouping) Òí ãÇ åæ ...
+        var groupedData = new List<PropertyGroup>
+    {
+        new PropertyGroup { Key = "Layout", Items = allProps.Where(p => p.Name.Contains("Width") || p.Name.Contains("Height") || p.Name.Contains("Margin")).ToList() },
+        new PropertyGroup { Key = "Appearance", Items = allProps.Where(p => p.Name.Contains("Background") || p.Name.Contains("Opacity")).ToList() },
+        new PropertyGroup { Key = "Common", Items = allProps.Where(p => !p.Name.Contains("Width") && !p.Name.Contains("Background")).Take(20).ToList() }
+    };
+
+        GroupsControl.ItemsSource = groupedData.Where(g => g.Items.Any()).ToList();
         _isUpdatingFromCode = false;
     }
 
-    // åĞÇ ÇáÍÏË íÚãá ÚäÏãÇ íßÊÈ ÇáãÓÊÎÏã ÑŞãÇğ ÌÏíÏÇğ İí Ãí TextBox
-    private void PropertyValue_Changed(object? sender, TextChangedEventArgs e)
+    private string GetCategory(PropertyInfo prop)
     {
-        if (_isUpdatingFromCode || _currentElement == null) return;
-
-        if (double.TryParse(WidthBox.Text, out double w) && w > 0) _currentElement.Width = w;
-        if (double.TryParse(HeightBox.Text, out double h) && h > 0) _currentElement.Height = h;
-
-        if (double.TryParse(LeftBox.Text, out double x)) Canvas.SetLeft(_currentElement, x);
-        if (double.TryParse(TopBox.Text, out double y)) Canvas.SetTop(_currentElement, y);
+        string n = prop.Name.ToLower();
+        if (n.Contains("width") || n.Contains("height") || n.Contains("margin") || n.Contains("canvas")) return "Layout";
+        if (n.Contains("color") || n.Contains("brush") || n.Contains("background")) return "Brushes";
+        if (n.Contains("text") || n.Contains("font")) return "Typography";
+        return "Common";
     }
+
 }

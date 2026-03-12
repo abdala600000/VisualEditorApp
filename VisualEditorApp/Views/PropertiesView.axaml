@@ -1,29 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="VisualEditorApp.PropertiesView">
-  <StackPanel Margin="10" Spacing="10">
-        <TextBlock Text="Element Properties" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-        
-        <TextBlock Text="Selected Type:" Foreground="Gray"/>
-        <TextBlock Name="ElementTypeText" Text="None" FontWeight="Bold" Margin="0,0,0,10"/>
-
-        <Grid ColumnDefinitions="Auto, *, Auto, *" Margin="0,5">
-            <TextBlock Grid.Column="0" Text="Width:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBox Grid.Column="1" Name="WidthBox" TextChanged="PropertyValue_Changed" Margin="0,0,10,0"/>
-            
-            <TextBlock Grid.Column="2" Text="Height:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBox Grid.Column="3" Name="HeightBox" TextChanged="PropertyValue_Changed"/>
-        </Grid>
-
-        <Grid ColumnDefinitions="Auto, *, Auto, *" Margin="0,5">
-            <TextBlock Grid.Column="0" Text="X (Left):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBox Grid.Column="1" Name="LeftBox" TextChanged="PropertyValue_Changed" Margin="0,0,10,0"/>
-            
-            <TextBlock Grid.Column="2" Text="Y (Top):" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBox Grid.Column="3" Name="TopBox" TextChanged="PropertyValue_Changed"/>
-        </Grid>
-    </StackPanel>
+             xmlns:local="using:VisualEditorApp"
+             x:Class="VisualEditorApp.PropertiesView"
+             x:DataType="local:PropertiesView"> <ScrollViewer>
+        <ItemsControl x:Name="GroupsControl">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:PropertyGroup">
+                    <Expander Header="{Binding Key}" IsExpanded="True" Margin="0,2">
+                        
+                        <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:PropertyItem">
+                                    <Grid ColumnDefinitions="120, *" Margin="2">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1" Text="{Binding Value, Mode=TwoWay}" BorderThickness="0,0,0,1"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        
+                    </Expander>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
 </UserControl>
