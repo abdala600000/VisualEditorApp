@@ -6,7 +6,7 @@
              x:Class="VisualEditorApp.DesignerItem">
 
 
-    <UserControl.Styles>
+   <UserControl.Styles>
         <Style Selector="Thumb.ResizerThumb">
             <Setter Property="Width" Value="10"/>
             <Setter Property="Height" Value="10"/>
@@ -17,22 +17,26 @@
             </Setter>
         </Style>
     </UserControl.Styles>
-<Grid Background="Transparent">
+
+    <Grid Background="Transparent">
         
         <ContentControl Name="ShapeContainer" />
         
-        <Border Name="SelectionBorder" BorderBrush="DodgerBlue" BorderThickness="1" IsHitTestVisible="False" />
+        <Grid Name="AdornerLayer" IsVisible="False">
+            <Border Name="SelectionBorder" BorderBrush="DodgerBlue" BorderThickness="1" IsHitTestVisible="False" />
+            
+            <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" 
+                   Cursor="TopLeftCorner" DragDelta="Resize_DragDelta"/>
+                   
+            <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" 
+                   Cursor="TopRightCorner" DragDelta="Resize_DragDelta"/>
+                   
+            <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                   Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta"/>
+                   
+            <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                   Cursor="BottomRightCorner" DragDelta="Resize_DragDelta"/>
+        </Grid>
         
-        <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" 
-               Cursor="TopLeftCorner" DragDelta="Resize_DragDelta"/>
-               
-        <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" 
-               Cursor="TopRightCorner" DragDelta="Resize_DragDelta"/>
-               
-        <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
-               Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta"/>
-               
-        <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
-               Cursor="BottomRightCorner" DragDelta="Resize_DragDelta"/>
-               
-    </Grid></UserControl>
+    </Grid>
+</UserControl>

@@ -15,6 +15,8 @@ public partial class WorkspaceView : UserControl
     private bool _isDragging = false;
     private Point _startPoint;
     private Control? _draggedElement = null;
+    // ãÊÛíÑ áÍİÙ ÇáÚäÕÑ ÇáãÍÏÏ ÍÇáíÇğ
+    private DesignerItem? _selectedItem = null;
 
     public WorkspaceView()
     {
@@ -30,20 +32,36 @@ public partial class WorkspaceView : UserControl
         var point = e.GetCurrentPoint(canvas);
         var visualSource = e.Source as Visual;
 
-        // åäÇ äÈÍË Úä DesignerItem İí ÇáÚäÇÕÑ ÇáÊí ÊÍÊ ÇáãÇæÓ
-        // ÅĞÇ ÖÛØäÇ Úáì ÇáãÑÈÚ ÇáÏÇÎáí¡ ÓíÕÚÏ ÇáßæÏ ááÃÚáì ÍÊì íÌÏ DesignerItem ÇáÍÇæí áå
         var designerItem = visualSource?.GetVisualAncestors().OfType<DesignerItem>().FirstOrDefault()
                            ?? visualSource as DesignerItem;
 
         if (designerItem != null)
         {
+            // ÅĞÇ ÖÛØäÇ Úáì ÚäÕÑ ÌÏíÏ ÛíÑ ÇáãÍÏÏ ÍÇáíÇğ¡ Şã ÈÅáÛÇÁ ÊÍÏíÏ ÇáŞÏíã
+            if (_selectedItem != null && _selectedItem != designerItem)
+            {
+                _selectedItem.IsSelected = false;
+            }
+
+            // ÊÍÏíÏ ÇáÚäÕÑ ÇáĞí ÖÛØäÇ Úáíå
+            _selectedItem = designerItem;
+            _selectedItem.IsSelected = true;
+
             _isDragging = true;
-            _draggedElement = designerItem; // ÇáÂä äÍä äÓÍÈ ÇáÛáÇİ ÈÇáßÇãá
+            _draggedElement = designerItem;
             _startPoint = point.Position;
             e.Handled = true;
         }
+        else
+        {
+            // ÅĞÇ ÖÛØäÇ Úáì ãÓÇÍÉ İÇÑÛÉ İí ÇáÜ Canvas¡ Şã ÈÅáÛÇÁ ÇáÊÍÏíÏ
+            if (_selectedItem != null)
+            {
+                _selectedItem.IsSelected = false;
+                _selectedItem = null;
+            }
+        }
     }
-
     private void Canvas_PointerMoved(object? sender, PointerEventArgs e)
     {
         if (!_isDragging || _draggedElement == null) return;

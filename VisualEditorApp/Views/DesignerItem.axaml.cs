@@ -14,6 +14,19 @@ public partial class DesignerItem : UserControl
     {
         ShapeContainer.Content = content;
     }
+    // „ €Ì— ·Õ›Ÿ Õ«·… «· ÕœÌœ
+    private bool _isSelected;
+
+    // Œ«’Ì… ·· Õﬂ„ ›Ì «· ÕœÌœ Ê≈ŸÂ«—/≈Œ›«¡ «·ÿ»ﬁ…
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            _isSelected = value;
+            AdornerLayer.IsVisible = value; // ≈ŸÂ«— √Ê ≈Œ›«¡ «·≈ÿ«— Ê«·‰ﬁ«ÿ
+        }
+    }
     // Â–Â «·œ«·…  ⁄„· ⁄‰œ ”Õ» √Ì ‰ﬁÿ… „‰ ‰ﬁ«ÿ «·“Ê«Ì«
     private void Resize_DragDelta(object? sender, VectorEventArgs e)
     {
