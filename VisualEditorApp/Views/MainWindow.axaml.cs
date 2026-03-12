@@ -1,11 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using VisualEditorApp.Models;
 
 namespace VisualEditorApp.Views
@@ -44,66 +46,54 @@ namespace VisualEditorApp.Views
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select XML / XAML File",
-                AllowMultiple = false,
-                FileTypeFilter = new[]
-                {
-                new FilePickerFileType("Avalonia XAML") { Patterns = new[] { "*.xml", "*.xaml", "*.axaml" } }
-            }
+                AllowMultiple = false
             });
 
             if (files.Count >= 1)
             {
                 var filePath = files[0].Path.LocalPath;
-                Debug.WriteLine($"Selected file: {filePath}");
 
                 try
                 {
-                    // 1. ﬁ—«¡… „Õ ÊÏ «·„·› ﬂ‰’
-                    string xamlText = await File.ReadAllTextAsync(filePath);
+                    string xmlText = await System.IO.File.ReadAllTextAsync(filePath);
 
-                    // 2.  Õ·Ì· «·‹ XAML Ê ÕÊÌ·Â ≈·Ï ﬂ«∆‰«  „—∆Ì…
-                    var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(xamlText);
+                    var parser = new CustomXamlParser();
 
-                    if (parsedObject is Control rootControl)
+                    // «·»«—”— «·¬‰ ”Ì—Ã⁄ ·ﬂ ‘Ã—… ﬂ«„·… («·‹ Window Ê»œ«Œ·Â« «·‹ StackPanel Êﬂ· «·√·Ê«‰)
+                    Control? parsedRoot = parser.ParseDocument(xmlText);
+
+                    WorkspaceView.Instance?.ClearWorkspace();
+
+                    if (parsedRoot != null)
                     {
-                        // 3.  ‰ŸÌ› „”«Õ… «·⁄„· «·Õ«·Ì…
-                        WorkspaceView.Instance?.ClearWorkspace();
+                        Control elementToWrap = parsedRoot;
 
-                        // 4. ≈–« ﬂ«‰ «·„·› ÌÕ ÊÌ ⁄·Ï Õ«ÊÌ… (Panel) „À· Canvas √Ê Grid
-                        if (rootControl is Panel panel)
+                        // ≈–« ﬂ«‰ «·Ã–— ÂÊ Window √Ê UserControl° ‰” Œ—Ã «·„Õ ÊÏ «·œ«Œ·Ì » «⁄Â ·⁄—÷Â
+                        if (parsedRoot is ContentControl contentControl && contentControl.Content is Control innerContent)
                         {
-                            // ‰‰”Œ «·⁄‰«’— ›Ì ﬁ«∆„… „‰›’·… À„ ‰›’·Â« ⁄‰ «·Õ«ÊÌ… «·√’·Ì…
-                            var children = panel.Children.ToList();
-                            panel.Children.Clear();
-
-                            foreach (var child in children)
-                            {
-                                if (child is Control uiControl)
-                                {
-                                    // «” Œ—«Ã Œ’«∆’ «·⁄‰’—
-                                    double left = Canvas.GetLeft(uiControl);
-                                    double top = Canvas.GetTop(uiControl);
-                                    double width = uiControl.Width;
-                                    double height = uiControl.Height;
-
-                                    // ≈—”«· «·⁄‰’— ·„”«Õ… «·⁄„· ·Ì „  €·Ì›Â
-                                    WorkspaceView.Instance?.AddWrappedElement(uiControl, left, top, width, height);
-                                }
-                            }
+                            elementToWrap = innerContent;
                         }
-                        else
-                        {
-                            // ≈–« ﬂ«‰ «·„·› ÌÕ ÊÌ ⁄·Ï ⁄‰’— Ê«Õœ ›ﬁÿ („À·« <Button> „»«‘—)
-                            WorkspaceView.Instance?.AddWrappedElement(rootControl, 50, 50, rootControl.Width, rootControl.Height);
-                        }
+
+                        // ≈—”«· «·‘Ã—… »«·ﬂ«„· ·  €·› »‹ DesignerItem Ê«Õœ Ê ŸÂ— ›Ì «·‹ Workspace
+                        WorkspaceView.Instance?.AddWrappedElement(elementToWrap, 50, 50, double.NaN, double.NaN);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error parsing XAML: {ex.Message}");
-                    // Ì„ﬂ‰ﬂ ·«Õﬁ« ⁄—÷ MessageBox Â‰« ·≈Œ»«— «·„” Œœ„ »ÊÃÊœ Œÿ√ ›Ì «·„·›
+                    System.Diagnostics.Debug.WriteLine($"Error parsing XML: {ex.Message}");
                 }
             }
+        }
+
+        // --- œ«·… „”«⁄œ… ·«” Œ—«Ã «·√—ﬁ«„ „‰ Œ’«∆’ «·‹ XML »√„«‰ ---
+        private double GetDoubleAttribute(XElement element, string attributeName, double defaultValue)
+        {
+            var attr = element.Attribute(attributeName);
+            if (attr != null && double.TryParse(attr.Value, out double result))
+            {
+                return result;
+            }
+            return defaultValue;
         }
 
         private void RunProject_Click(object? sender, RoutedEventArgs e)
