@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -7,6 +8,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using VisualEditorApp.Models;
 
@@ -55,26 +57,25 @@ namespace VisualEditorApp.Views
 
                 try
                 {
+                    // 1. ﬁ—«¡… «·‰’ «·Œ«„
                     string xmlText = await System.IO.File.ReadAllTextAsync(filePath);
 
-                    var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(xmlText);
+                    // 2. «·”Õ— «·„⁄„«—Ì:  ‰ŸÌ› «·‹ XAML „‰ √Ì ﬂÊœ Ì”»» Crash ›Ì Ê÷⁄ «· ‘€Ì·
+                    string cleanXmlText = SanitizeXaml(xmlText);
+
+                    // 3.  „—Ì— «·‰’ «·‰ŸÌ› ··„Õ—ﬂ
+                    var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(cleanXmlText);
 
                     if (parsedObject is Control rootControl)
                     {
                         Control elementToLoad = rootControl;
 
-                        // «·”Õ— Â‰«: ≈–« ﬂ«‰ «·Ã–— ⁄»«—… ⁄‰ ‰«›–…° ‰” Œ—Ã „Õ Ê«Â«
-                        if (rootControl is Window window)
+                        if (rootControl is Window window && window.Content is Control windowContent)
                         {
-                            if (window.Content is Control windowContent)
-                            {
-                                // ‰›’· «·„Õ ÊÏ ⁄‰ «·‰«›–… «·ﬁœÌ„… ·ﬂÌ ‰ „ﬂ‰ „‰ ≈÷«› Â ·„”«Õ… «·⁄„·
-                                window.Content = null;
-                                elementToLoad = windowContent;
-                            }
+                            window.Content = null;
+                            elementToLoad = windowContent;
                         }
 
-                        // ≈—”«· «·„Õ ÊÏ «·„” Œ—Ã (√Ê «·ﬂ‰ —Ê· «·⁄«œÌ) ≈·Ï ”ÿÕ «· ’„Ì„
                         WorkspaceView.Instance?.LoadDesign(elementToLoad);
                     }
                 }
@@ -83,6 +84,29 @@ namespace VisualEditorApp.Views
                     System.Diagnostics.Debug.WriteLine($"Error loading file: {ex.Message}");
                 }
             }
+        }
+
+        // --- „’›«…  ‰ŸÌ› «·‹ XAML (XAML Sanitizer) ---
+        private string SanitizeXaml(string originalXaml)
+        {
+            string clean = originalXaml;
+
+            // 1.  ÕÊÌ· CompiledBinding ≈·Ï Binding ⁄«œÌ ·ﬂÌ Ì⁄„· Êﬁ  «· ’„Ì„
+            clean = Regex.Replace(clean, @"\{CompiledBinding\b", "{Binding");
+
+            // 2. ≈“«·… x:Class (·√‰Â«   ÿ·» ﬂÊœ Œ·›Ì €Ì— „ÊÃÊœ √À‰«¡ «· ’„Ì„)
+            clean = Regex.Replace(clean, @"x:Class=""[^""]*""", "");
+
+            // 3. ≈“«·… «·√Õœ«À (Events) «· Ì  »ÕÀ ⁄‰ œÊ«· ›Ì «·ﬂÊœ «·Œ·›Ì
+            clean = Regex.Replace(clean, @"\s+(Click|PointerPressed|PointerReleased|KeyDown|KeyUp|Loaded|PointerMoved)=""[^""]*""", "");
+
+            // „·«ÕŸ… Â«„…: ·ﬁœ ﬁ„‰« »≈“«·… „”Õ x:Name „‰ Â‰«° 
+            // ·√‰ﬂ  ” Œœ„ ElementName bindings Ê«· Ì  ⁄ „œ ⁄·Ï ÊÃÊœ «·√”„«¡.
+            // »œ·« „‰ –·ﬂ° ”‰„”Õ x:Name „‰ «·⁄‰«’— €Ì— «·„—∆Ì… ›ﬁÿ („À· Transforms) 
+            // √Ê ‰ —ﬂ Avalonia   ⁄«„· „⁄ «·√”„«¡ «·’ÕÌÕ… ··ﬂ‰ —Ê·« .
+            clean = Regex.Replace(clean, @"<([^>]+)\s+x:Name=""[^""]*""([^>]*)>\s*</\1>", "<$1$2></$1>"); //  ‰ŸÌ› √Ê·Ì ··‹ Transforms
+
+            return clean;
         }
 
         // --- œ«·… „”«⁄œ… ·«” Œ—«Ã «·√—ﬁ«„ „‰ Œ’«∆’ «·‹ XML »√„«‰ ---
@@ -100,6 +124,18 @@ namespace VisualEditorApp.Views
         {
             // Â‰« ”‰ﬂ » ﬂÊœ  ‘€Ì· (Compile and Run) ··„‘—Ê⁄ «·„› ÊÕ
             Debug.WriteLine(" „ «Œ Ì«—:  ‘€Ì· «·„‘—Ê⁄");
+        }
+
+        private void PreviewToggle_Checked(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ToggleButton tb)
+            {
+                // ≈—”«· «·Õ«·… (True ··„⁄«Ì‰…° False ·· ’„Ì„)
+                WorkspaceView.Instance?.SetPreviewMode(tb.IsChecked ?? false);
+
+                //  €ÌÌ— ·Ê‰ «·“—«— ·· ‰»ÌÂ
+                tb.Content = (tb.IsChecked ?? false) ? "RUNNING (Live)" : "Preview Mode";
+            }
         }
     }
 }

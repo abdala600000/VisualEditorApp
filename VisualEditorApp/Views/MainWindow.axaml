@@ -48,7 +48,10 @@
             </MenuItem>
             
         </Menu>
-
+    <ToggleButton Name="PreviewToggle" 
+                  Content="Preview Mode" 
+                  Margin="10,0" 
+                  IsCheckedChanged="PreviewToggle_Checked"/>
         <dock:DockControl Name="MainDockControl" />
         
     </DockPanel>

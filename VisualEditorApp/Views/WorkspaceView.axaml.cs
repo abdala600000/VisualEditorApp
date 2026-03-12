@@ -38,9 +38,11 @@ public partial class WorkspaceView : UserControl
     // --- 1. ÇáÊÍÏíÏ æÇáÇÚÊÑÇÖ ---
     private void DesignSurface_PreviewPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // ÅĞÇ ßäÇ İí æÖÚ ÇáãÚÇíäÉ¡ áÇ ÊİÚá ÔíÆÇğ æÇÊÑß ÇáãÇæÓ íãÑ ááßäÊÑæá ÇáÍŞíŞí
+        if (_isPreviewMode) return;
+
         if (e.Source is Control clickedControl && clickedControl != DesignSurface)
         {
-            // ÅĞÇ ÖÛØäÇ Úáì ÇáÜ Window ÇáÃÕáíÉ äİÓåÇ¡ äÊÌÇåáåÇ æäÍÏÏ ãÓÇÍÉ ÇáÚãá
             if (clickedControl is Window || clickedControl.Name == "DesignSurface")
             {
                 ClearSelection();
@@ -48,15 +50,16 @@ public partial class WorkspaceView : UserControl
             }
 
             SelectControl(clickedControl);
-
-            // ÊİÚíá ÇáÊİÇÚá ãÚ ØÈŞÉ ÇáÜ Adorner áßí äÊãßä ãä ÓÍÈ ÇáãÑÈÚÇÊ
             AdornerCanvas.IsHitTestVisible = true;
-            e.Handled = true;
+            e.Handled = true; // ÇÚÊÑÇÖ ÇáãÇæÓ (íÍÏË İŞØ İí æÖÚ ÇáÊÕãíã)
         }
         else
         {
             ClearSelection();
         }
+
+
+        
     }
 
     private void SelectControl(Control control)
@@ -131,5 +134,16 @@ public partial class WorkspaceView : UserControl
         // ÊÍÏíË ãßÇä ÇáÅØÇÑ ÇáÃÒÑŞ áíØÇÈŞ ÇáÍÌã ÇáÌÏíÏ
         UpdateAdornerPosition();
     }
+    private bool _isPreviewMode = false;
+
+    public void SetPreviewMode(bool isPreview)
+    {
+        _isPreviewMode = isPreview;
+        if (_isPreviewMode)
+        {
+            ClearSelection(); // ÅÎİÇÁ ÇáãÑÈÚÇÊ ÇáÒÑŞÇÁ İæÑÇğ
+        }
+    }
+ 
 }
 
