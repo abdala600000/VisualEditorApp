@@ -46,7 +46,8 @@ public partial class WorkspaceView : UserControl
             // ÊÍÏíÏ ÇáÚäÕÑ ÇáĞí ÖÛØäÇ Úáíå
             _selectedItem = designerItem;
             _selectedItem.IsSelected = true;
-
+            // ÃÖİ åĞÇ ÇáÓØÑ áÅÑÓÇá ÇáÚäÕÑ Åáì áæÍÉ ÇáÎÕÇÆÕ
+            PropertiesView.Instance?.SetSelectedElement(_selectedItem);
             _isDragging = true;
             _draggedElement = designerItem;
             _startPoint = point.Position;
@@ -59,6 +60,8 @@ public partial class WorkspaceView : UserControl
             {
                 _selectedItem.IsSelected = false;
                 _selectedItem = null;
+                // ÃÖİ åĞÇ ÇáÓØÑ áÊİÑíÛ áæÍÉ ÇáÎÕÇÆÕ
+                PropertiesView.Instance?.SetSelectedElement(null);
             }
         }
     }
@@ -97,5 +100,32 @@ public partial class WorkspaceView : UserControl
         Canvas.SetLeft(element, left);
         Canvas.SetTop(element, top);
         DesignerCanvas.Children.Add(element);
+    }
+
+
+    // ÏÇáÉ áãÓÍ ßá ÇáÚäÇÕÑ ãä ãÓÇÍÉ ÇáÚãá
+    public void ClearWorkspace()
+    {
+        DesignerCanvas.Children.Clear();
+        _selectedItem = null;
+    }
+
+    // ÏÇáÉ ãÎÕÕÉ áÇÓÊŞÈÇá ÇáÚäÇÕÑ ÇáãÍááÉ ãä ãáİ ÇáÜ XAML æÊÛáíİåÇ
+    public void AddWrappedElement(Control element, double left, double top, double width, double height)
+    {
+        var designerItem = new DesignerItem
+        {
+            // ÅĞÇ áã íßä ÇáÚäÕÑ íãÊáß ÚÑÖÇğ Ãæ ØæáÇğ İí Çáãáİ¡ äÖÚ ŞíãÇğ ÇİÊÑÇÖíÉ
+            Width = double.IsNaN(width) ? 100 : width,
+            Height = double.IsNaN(height) ? 40 : height
+        };
+
+        designerItem.SetContent(element);
+
+        // ÊÍÏíÏ ÇáãæŞÚ¡ æÅĞÇ áã íßä áå ãæŞÚ äÖÚå İí ÇáÅÍÏÇËíÇÊ (50, 50)
+        Canvas.SetLeft(designerItem, double.IsNaN(left) ? 50 : left);
+        Canvas.SetTop(designerItem, double.IsNaN(top) ? 50 : top);
+
+        DesignerCanvas.Children.Add(designerItem);
     }
 }

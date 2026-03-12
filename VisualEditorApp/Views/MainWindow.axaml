@@ -23,7 +23,9 @@
         <DataTemplate DataType="{x:Type tools:ToolboxTool}">
             <local:ToolboxView />
         </DataTemplate>
-
+         <DataTemplate DataType="{x:Type tools:PropertiesTool}">
+            <local:PropertiesView />
+        </DataTemplate>
     </Window.DataTemplates>
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,

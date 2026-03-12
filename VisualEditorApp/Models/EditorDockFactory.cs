@@ -21,6 +21,8 @@ namespace VisualEditorApp.Models
             // 1. إنشاء المحتوى الداخلي (الأدوات ومساحة العمل)
             var toolboxTool = new ToolboxTool { Id = "Toolbox", Title = "Toolbox" };
             var workspaceDoc = new WorkspaceDocument { Id = "Workspace", Title = "Workspace" };
+            // إنشاء أداة الخصائص
+            var propertiesTool = new PropertiesTool { Id = "Properties", Title = "Properties" };
 
             // 2. إنشاء الحاويات (Docks) ووضع المحتوى بداخلها كـ Active (هذا ما كان ينقصنا لكي تظهر)
             var leftDock = new ToolDock
@@ -39,11 +41,13 @@ namespace VisualEditorApp.Models
                 VisibleDockables = CreateList<IDockable>(workspaceDoc)
             };
 
+            // وضعها في الحاوية اليمنى وتفعيلها
             var rightDock = new ToolDock
             {
                 Id = "RightDock",
-                Proportion = 0.2 // تأخذ 20% من مساحة الشاشة
-                // (سنضع فيها الخصائص لاحقاً)
+                Proportion = 0.2, // تأخذ 20% من الشاشة
+                ActiveDockable = propertiesTool,
+                VisibleDockables = CreateList<IDockable>(propertiesTool)
             };
 
             // 3. تجميع الحاويات في هيكل نسبي مقسم
