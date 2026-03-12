@@ -18,22 +18,21 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid Background="Transparent">
+  <Grid Background="Transparent">
         
         <ContentControl Name="ShapeContainer" />
         
-        <Grid Name="AdornerLayer" IsVisible="False">
+        <Border Name="HitTestOverlay" Background="Transparent" ZIndex="1" />
+        
+        <Grid Name="AdornerLayer" IsVisible="False" ZIndex="2">
             <Border Name="SelectionBorder" BorderBrush="DodgerBlue" BorderThickness="1" IsHitTestVisible="False" />
             
             <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" 
                    Cursor="TopLeftCorner" DragDelta="Resize_DragDelta"/>
-                   
             <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" 
                    Cursor="TopRightCorner" DragDelta="Resize_DragDelta"/>
-                   
             <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
                    Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta"/>
-                   
             <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
                    Cursor="BottomRightCorner" DragDelta="Resize_DragDelta"/>
         </Grid>

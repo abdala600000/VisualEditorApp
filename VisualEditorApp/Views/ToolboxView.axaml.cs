@@ -54,4 +54,30 @@ public partial class ToolboxView : UserControl
 
         WorkspaceView.Instance?.AddElement(designerItem, 100, 100);
     }
+
+
+    private void AddControlButton_Click(object? sender, RoutedEventArgs e)
+    {
+        // ≈‰‘«¡ “— ÕﬁÌﬁÌ
+        var btn = new Button
+        {
+            Content = "Sample Button",
+            // ‰Ã⁄· «·“— Ì „œœ ·Ì„·√ „”«Õ… «·€·«› (DesignerItem) »«·ﬂ«„· ⁄‰œ «· ﬂ»Ì— Ê«· ’€Ì—
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
+        };
+
+        // ≈‰‘«¡ «·€·«› Ê ÕœÌœ √»⁄«œÂ «·«› —«÷Ì…
+        var designerItem = new DesignerItem
+        {
+            Width = 120,
+            Height = 40
+        };
+
+        // Ê÷⁄ «·“— œ«Œ· «·€·«›
+        designerItem.SetContent(btn);
+
+        // ≈—”«·Â ≈·Ï „”«Õ… «·⁄„·
+        WorkspaceView.Instance?.AddElement(designerItem, 150, 150);
+    }
 }

@@ -8,5 +8,6 @@
         <TextBlock Text="Basic Tools" FontWeight="Bold" FontSize="16"/>
         <Button Name="AddRectButton" Content="Add Rectangle" HorizontalAlignment="Stretch" Click="AddRectButton_Click"/>
         <Button Name="AddCircleButton" Content="Add Circle" HorizontalAlignment="Stretch" Click="AddCircleButton_Click"/>
-    </StackPanel>
-</UserControl>
+        
+        <Button Name="AddControlButton" Content="Add Button" HorizontalAlignment="Stretch" Click="AddControlButton_Click"/>
+    </StackPanel></UserControl>
