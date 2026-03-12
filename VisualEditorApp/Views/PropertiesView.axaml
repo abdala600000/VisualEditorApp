@@ -2,26 +2,69 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:VisualEditorApp"
              x:Class="VisualEditorApp.PropertiesView"
-             x:DataType="local:PropertiesView"> <ScrollViewer>
-        <ItemsControl x:Name="GroupsControl">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="local:PropertyGroup">
-                    <Expander Header="{Binding Key}" IsExpanded="True" Margin="0,2">
-                        
-                        <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="local:PropertyItem">
-                                    <Grid ColumnDefinitions="120, *" Margin="2">
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
-                                        <TextBox Grid.Column="1" Text="{Binding Value, Mode=TwoWay}" BorderThickness="0,0,0,1"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        
-                    </Expander>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </ScrollViewer>
+             x:DataType="local:PropertiesView">
+
+  <UserControl.Resources>
+        <local:PropertyTypeToVisibleConverter x:Key="TypeToVis"/>
+        <local:BrushToColorConverter x:Key="BrushToColor"/>
+    </UserControl.Resources>
+
+  
+
+    <DockPanel Background="#EEE">
+        <Border DockPanel.Dock="Top" Background="#F5F5F5" BorderBrush="#CCC" BorderThickness="0,0,0,1">
+            <StackPanel>
+                <Grid ColumnDefinitions="Auto, Auto, *" Margin="2">
+                    <Button Width="24" Height="24" Content="G" ToolTip.Tip="Categorized" Click="SortByCategory_Click"/>
+                    <Button Grid.Column="1" Width="24" Height="24" Content="A" ToolTip.Tip="Alphabetical" Click="SortAlphabetical_Click"/>
+                    <TextBox Grid.Column="2" Name="SearchBox" Watermark="Search..." Margin="5,2" Height="24" KeyUp="SearchBox_KeyUp"/>
+                </Grid>
+                <Border Background="#EEE" Padding="10,5">
+                    <Grid ColumnDefinitions="Auto, *, Auto">
+                        <TextBlock Text="Name:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#555"/>
+                        <TextBox Grid.Column="1" Name="NameEditor" FontSize="13" FontWeight="Bold" 
+                                 BorderThickness="0,0,0,1" Background="Transparent"/>
+                        <TextBlock Grid.Column="2" Name="SelectedTypeText" Text="(Type)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer>
+            <ItemsControl Name="GroupsControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:PropertyGroup">
+                        <Expander Header="{Binding Key}" IsExpanded="True" Padding="0" HorizontalAlignment="Stretch">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:PropertyItem">
+                                        <Grid ColumnDefinitions="*, 1.5*" Height="28">
+                                            <Border BorderBrush="#DDD" BorderThickness="0,0,1,1" Padding="8,0">
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="12"/>
+                                            </Border>
+                                            
+                                            <Border Grid.Column="1" BorderBrush="#DDD" BorderThickness="0,0,0,1">
+                                              <Panel Margin="5,0">
+    <TextBox IsVisible="{Binding PropertyType, Converter={StaticResource TypeToVis}, ConverterParameter=text}" 
+             Text="{Binding Value, Mode=TwoWay}" 
+             BorderThickness="0" FontSize="11" Background="Transparent" VerticalAlignment="Center"/>
+
+    <CheckBox IsVisible="{Binding PropertyType, Converter={StaticResource TypeToVis}, ConverterParameter=bool}" 
+              IsChecked="{Binding Value, Mode=TwoWay}" MinWidth="0"/>
+
+    <ColorPicker IsVisible="{Binding PropertyType, Converter={StaticResource TypeToVis}, ConverterParameter=color}" 
+                 Color="{Binding Value, Converter={x:Static local:BrushToColorConverter.Instance}}" 
+                 Height="20" HorizontalAlignment="Stretch"/>
+</Panel>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
 </UserControl>
