@@ -1,13 +1,34 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:behaviors="using:VisualEditorApp.Behaviors"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="VisualEditorApp.ToolboxView">
-<StackPanel Margin="10" Spacing="10">
-        <TextBlock Text="Basic Tools" FontWeight="Bold" FontSize="16"/>
-        <Button Name="AddRectButton" Content="Add Rectangle" HorizontalAlignment="Stretch" Click="AddRectButton_Click"/>
-        <Button Name="AddCircleButton" Content="Add Circle" HorizontalAlignment="Stretch" Click="AddCircleButton_Click"/>
-        
-        <Button Name="AddControlButton" Content="Add Button" HorizontalAlignment="Stretch" Click="AddControlButton_Click"/>
-    </StackPanel></UserControl>
+             xmlns:vm="using:VisualEditorApp.ViewModels"
+             xmlns:m="using:VisualEditorApp.Models"
+             xmlns:tools="using:VisualEditorApp.Models.Tools"
+             xmlns:i="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
+             xmlns:idd="clr-namespace:Avalonia.Xaml.Interactions.DragAndDrop;assembly=Avalonia.Xaml.Interactions.DragAndDrop"
+             x:Class="VisualEditorApp.ToolboxView"
+             x:DataType="tools:ToolboxTool">
+
+    <DockPanel Background="#F3F3F3">
+        <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="0,0,0,1" Padding="5">
+            <TextBlock Text="Toolbox" FontWeight="Bold" Foreground="#333"/>
+        </Border>
+
+        <ListBox ItemsSource="{Binding Items}" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="m:ToolboxItem">
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent" Cursor="Hand" Margin="4">
+                        <Interaction.Behaviors>
+                           <behaviors:ToolboxDragBehavior />
+                        </Interaction.Behaviors>
+                        
+                        <PathIcon Data="{Binding IconPath}" Width="16" Height="16" Foreground="#555"/>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>
