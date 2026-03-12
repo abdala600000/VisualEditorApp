@@ -32,7 +32,7 @@ public partial class ToolboxView : UserControl
         // ‰” Œœ„ «·œ«·… «·ÃœÌœ… ·Ê÷⁄ «·„—»⁄ œ«Œ· «·€·«› »œÊ‰ „”Õ «·‰ﬁ«ÿ
         designerItem.SetContent(rect);
 
-        WorkspaceView.Instance?.AddElement(designerItem, 50, 50);
+      //  WorkspaceView.Instance?.AddElement(designerItem, 50, 50);
     }
 
     private void AddCircleButton_Click(object? sender, RoutedEventArgs e)
@@ -52,7 +52,7 @@ public partial class ToolboxView : UserControl
 
         designerItem.SetContent(ellipse);
 
-        WorkspaceView.Instance?.AddElement(designerItem, 100, 100);
+       // WorkspaceView.Instance?.AddElement(designerItem, 100, 100);
     }
 
 
@@ -78,6 +78,6 @@ public partial class ToolboxView : UserControl
         designerItem.SetContent(btn);
 
         // ≈—”«·Â ≈·Ï „”«Õ… «·⁄„·
-        WorkspaceView.Instance?.AddElement(designerItem, 150, 150);
+      //  WorkspaceView.Instance?.AddElement(designerItem, 150, 150);
     }
 }

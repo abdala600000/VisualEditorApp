@@ -4,11 +4,47 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="VisualEditorApp.WorkspaceView">
+
+    <UserControl.Styles>
+        <Style Selector="Thumb.ResizerThumb">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="White" BorderBrush="DodgerBlue" BorderThickness="1"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+
+   
  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Canvas Name="DesignerCanvas" Background="White" Width="2000" Height="2000"
-                PointerPressed="Canvas_PointerPressed"
-                PointerMoved="Canvas_PointerMoved"
-                PointerReleased="Canvas_PointerReleased">
+      <Grid Background="White">
+        
+        <ContentControl Name="DesignSurface" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+
+        <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
+            
+            <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
+                <Grid>
+                    <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" 
+                           Margin="-5,-5,0,0" Cursor="TopLeftCorner" DragDelta="Resize_DragDelta" IsHitTestVisible="True"/>
+                           
+                    <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" 
+                           Margin="0,-5,-5,0" Cursor="TopRightCorner" DragDelta="Resize_DragDelta" IsHitTestVisible="True"/>
+                           
+                    <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+                           Margin="-5,0,0,-5" Cursor="BottomLeftCorner" DragDelta="Resize_DragDelta" IsHitTestVisible="True"/>
+                           
+                    <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" 
+                           Margin="0,0,-5,-5" Cursor="BottomRightCorner" DragDelta="Resize_DragDelta" IsHitTestVisible="True"/>
+                </Grid>
+            </Border>
+            
         </Canvas>
+        
+    </Grid>
+
+
     </ScrollViewer>
 </UserControl>

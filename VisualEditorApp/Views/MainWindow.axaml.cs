@@ -57,30 +57,30 @@ namespace VisualEditorApp.Views
                 {
                     string xmlText = await System.IO.File.ReadAllTextAsync(filePath);
 
-                    var parser = new CustomXamlParser();
+                    var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(xmlText);
 
-                    // «·»«—”— «·¬‰ ”Ì—Ã⁄ ·ﬂ ‘Ã—… ﬂ«„·… («·‹ Window Ê»œ«Œ·Â« «·‹ StackPanel Êﬂ· «·√·Ê«‰)
-                    Control? parsedRoot = parser.ParseDocument(xmlText);
-
-                    WorkspaceView.Instance?.ClearWorkspace();
-
-                    if (parsedRoot != null)
+                    if (parsedObject is Control rootControl)
                     {
-                        Control elementToWrap = parsedRoot;
+                        Control elementToLoad = rootControl;
 
-                        // ≈–« ﬂ«‰ «·Ã–— ÂÊ Window √Ê UserControl° ‰” Œ—Ã «·„Õ ÊÏ «·œ«Œ·Ì » «⁄Â ·⁄—÷Â
-                        if (parsedRoot is ContentControl contentControl && contentControl.Content is Control innerContent)
+                        // «·”Õ— Â‰«: ≈–« ﬂ«‰ «·Ã–— ⁄»«—… ⁄‰ ‰«›–…° ‰” Œ—Ã „Õ Ê«Â«
+                        if (rootControl is Window window)
                         {
-                            elementToWrap = innerContent;
+                            if (window.Content is Control windowContent)
+                            {
+                                // ‰›’· «·„Õ ÊÏ ⁄‰ «·‰«›–… «·ﬁœÌ„… ·ﬂÌ ‰ „ﬂ‰ „‰ ≈÷«› Â ·„”«Õ… «·⁄„·
+                                window.Content = null;
+                                elementToLoad = windowContent;
+                            }
                         }
 
-                        // ≈—”«· «·‘Ã—… »«·ﬂ«„· ·  €·› »‹ DesignerItem Ê«Õœ Ê ŸÂ— ›Ì «·‹ Workspace
-                        WorkspaceView.Instance?.AddWrappedElement(elementToWrap, 50, 50, double.NaN, double.NaN);
+                        // ≈—”«· «·„Õ ÊÏ «·„” Œ—Ã (√Ê «·ﬂ‰ —Ê· «·⁄«œÌ) ≈·Ï ”ÿÕ «· ’„Ì„
+                        WorkspaceView.Instance?.LoadDesign(elementToLoad);
                     }
                 }
-                catch (Exception ex)
+                catch (System.Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error parsing XML: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error loading file: {ex.Message}");
                 }
             }
         }
