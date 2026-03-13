@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using VisualEditorApp.Models;
 using Microsoft.CodeAnalysis;
+// 💡 السطر ده مهم جداً عشان نقرأ هيكل الـ Solution الحقيقي
+using Microsoft.Build.Construction;
 
 namespace VisualEditorApp.Services
 {
@@ -14,22 +16,42 @@ namespace VisualEditorApp.Services
             var solutionName = solution.FilePath is null
                 ? "Solution"
                 : Path.GetFileNameWithoutExtension(solution.FilePath);
+
             var root = new SolutionItemViewModel(SolutionItemKind.Solution, solutionName, solution.FilePath);
-            var solutionDirectory = solution.FilePath is null
-                ? null
-                : Path.GetDirectoryName(solution.FilePath);
 
-            foreach (var project in solution.Projects.OrderBy(p => p.Name))
+            if (solution.FilePath == null) return root;
+
+            var solutionDirectory = Path.GetDirectoryName(solution.FilePath);
+
+            // 1. قراءة الهيكل الحقيقي للمجلدات من ملف الـ .sln باستخدام MSBuild
+            var slnFile = SolutionFile.Parse(solution.FilePath);
+
+            // قاموس لربط كل عنصر (مجلد أو مشروع) بالـ ID بتاعه عشان نبني الشجرة صح
+            var nodeLookup = new Dictionary<string, SolutionItemViewModel>();
+
+            // 2. إنشاء المجلدات الوهمية (Solution Folders)
+            foreach (var p in slnFile.ProjectsInOrder.Where(x => x.ProjectType == SolutionProjectType.SolutionFolder))
             {
-                var projectNode = new SolutionItemViewModel(SolutionItemKind.Project, project.Name, project.FilePath);
-                root.Children.Add(projectNode);
+                var folderNode = new SolutionItemViewModel(SolutionItemKind.Folder, p.ProjectName, null);
+                nodeLookup[p.ProjectGuid] = folderNode;
+            }
 
-                var projectDirectory = project.FilePath is null
-                    ? solutionDirectory
-                    : Path.GetDirectoryName(project.FilePath);
+            // 3. إنشاء المشاريع وربط ملفاتها
+            foreach (var p in slnFile.ProjectsInOrder.Where(x => x.ProjectType != SolutionProjectType.SolutionFolder))
+            {
+                // بندور على المشروع جوه Roslyn عشان نجيب ملفات الأكواد بتاعته
+                var roslynProject = solution.Projects.FirstOrDefault(rp => string.Equals(rp.FilePath, p.AbsolutePath, StringComparison.OrdinalIgnoreCase));
 
-                var allPaths = project.Documents
-                    .Concat(project.AdditionalDocuments)
+                if (roslynProject == null) continue;
+
+                var projectNode = new SolutionItemViewModel(SolutionItemKind.Project, roslynProject.Name, roslynProject.FilePath);
+                nodeLookup[p.ProjectGuid] = projectNode;
+
+                var projectDirectory = Path.GetDirectoryName(roslynProject.FilePath);
+
+                // سحب الملفات (الكود القديم بتاعنا اللي بيجيب الـ axaml والـ cs)
+                var allPaths = roslynProject.Documents
+                    .Concat(roslynProject.AdditionalDocuments)
                     .Where(d => d.FilePath != null)
                     .Select(d => d.FilePath!)
                     .ToList();
@@ -41,43 +63,61 @@ namespace VisualEditorApp.Services
                 }
 
                 var cleanPaths = allPaths
-                    .Where(p => projectDirectory != null && p.StartsWith(projectDirectory, StringComparison.OrdinalIgnoreCase))
-                    .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                             && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                             && !p.Contains($"{Path.AltDirectorySeparatorChar}bin{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                             && !p.Contains($"{Path.AltDirectorySeparatorChar}obj{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                    .Where(pPath => projectDirectory != null && pPath.StartsWith(projectDirectory, StringComparison.OrdinalIgnoreCase))
+                    .Where(pPath => !pPath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                 && !pPath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                 && !pPath.Contains($"{Path.AltDirectorySeparatorChar}bin{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                 && !pPath.Contains($"{Path.AltDirectorySeparatorChar}obj{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
                 AddDocumentsWithNesting(projectNode, projectDirectory, cleanPaths);
 
-                // 💡 السر هنا: استدعاء دالة الترتيب بعد بناء فرع المشروع وقبل عرضه
-                SortNodes(projectNode);
+                SortNodes(projectNode); // ترتيب الملفات جوه المشروع
             }
 
+            // 4. السحر هنا: بناء هيكل الشجرة النهائي بناءً على الـ Parent ID
+            foreach (var p in slnFile.ProjectsInOrder)
+            {
+                if (!nodeLookup.TryGetValue(p.ProjectGuid, out var currentNode)) continue;
+
+                // لو العنصر ليه أب (موجود جوه Solution Folder)
+                if (!string.IsNullOrEmpty(p.ParentProjectGuid) && nodeLookup.TryGetValue(p.ParentProjectGuid, out var parentNode))
+                {
+                    parentNode.Children.Add(currentNode);
+                }
+                else
+                {
+                    // لو مالوش أب، يبقى على الروت الرئيسي للـ Solution
+                    root.Children.Add(currentNode);
+                }
+            }
+
+            SortNodes(root); // ترتيب الروت الرئيسي عشان المجلدات تطلع فوق
             root.IsExpanded = true;
             return root;
         }
 
-        // 💡 الدالة السحرية لترتيب الشجرة (مجلدات أولاً، ثم ملفات، بترتيب أبجدي)
+        // 💡 تعديل الترتيب عشان المجلدات الوهمية تظهر فوق والمشاريع تحتها
         private static void SortNodes(SolutionItemViewModel node)
         {
-            // 1. فرز الأبناء: الفولدرات والمشاريع تاخد أولوية (1)، والملفات تاخد (0)، وبعدها ترتيب أبجدي بالاسم
             var sortedChildren = node.Children
-                .OrderByDescending(c => c.Kind == SolutionItemKind.Folder || c.Kind == SolutionItemKind.Project ? 1 : 0)
+                .OrderByDescending(c => c.Kind == SolutionItemKind.Folder ? 2 : (c.Kind == SolutionItemKind.Project ? 1 : 0))
                 .ThenBy(c => c.Name)
                 .ToList();
 
-            // 2. تفريغ القائمة العشوائية
             node.Children.Clear();
 
-            // 3. إعادة إضافتها بالترتيب النظيف
             foreach (var child in sortedChildren)
             {
                 node.Children.Add(child);
-                SortNodes(child); // ترتيب العناصر الداخلية لكل فولدر (Recursion)
+                SortNodes(child); // ترتيب متكرر للأبناء
             }
         }
+
+        // =========================================================
+        // باقي الدوال زي ما هي بدون تغيير (GetExtraUiFiles, AddDocumentsWithNesting, إلخ)
+        // =========================================================
 
         private static IEnumerable<string> GetExtraUiFiles(string projectDirectory)
         {
@@ -89,24 +129,18 @@ namespace VisualEditorApp.Services
 
             var dirInfo = new DirectoryInfo(projectDirectory);
             SearchDirectory(dirInfo, allowedExtensions, excludedFolders, extraFiles);
-
             return extraFiles;
         }
 
         private static void SearchDirectory(DirectoryInfo dir, HashSet<string> extensions, HashSet<string> excluded, List<string> results)
         {
             if (excluded.Contains(dir.Name)) return;
-
             try
             {
                 foreach (var file in dir.GetFiles())
                 {
-                    if (extensions.Contains(file.Extension))
-                    {
-                        results.Add(file.FullName);
-                    }
+                    if (extensions.Contains(file.Extension)) results.Add(file.FullName);
                 }
-
                 foreach (var subDir in dir.GetDirectories())
                 {
                     SearchDirectory(subDir, extensions, excluded, results);
@@ -122,7 +156,6 @@ namespace VisualEditorApp.Services
                 var relativePath = GetRelativePath(projectDirectory, path);
                 AddPath(projectNode, relativePath, path);
             }
-
             NestFileTypes(projectNode, ".xml.cs", ".xml");
             NestFileTypes(projectNode, ".axaml.cs", ".axaml");
             NestFileTypes(projectNode, ".xaml.cs", ".xaml");
@@ -158,11 +191,8 @@ namespace VisualEditorApp.Services
         private static string GetRelativePath(string? basePath, string fullPath)
         {
             if (string.IsNullOrWhiteSpace(basePath)) return Path.GetFileName(fullPath);
-
             var relativePath = Path.GetRelativePath(basePath, fullPath);
-            return relativePath.StartsWith("..", StringComparison.Ordinal)
-                ? Path.GetFileName(fullPath)
-                : relativePath;
+            return relativePath.StartsWith("..", StringComparison.Ordinal) ? Path.GetFileName(fullPath) : relativePath;
         }
 
         private static void AddPath(SolutionItemViewModel root, string relativePath, string fullPath)
