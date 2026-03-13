@@ -61,33 +61,52 @@ namespace VisualEditorApp.Views.Documents
             }
         }
 
-        private void BtnViewMode_Click(object? sender, RoutedEventArgs e)
+        private void BtnViewMode_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             var mainGrid = this.FindControl<Grid>("MainGrid");
             var btnDesign = this.FindControl<Button>("BtnDesign");
             var btnSplit = this.FindControl<Button>("BtnSplit");
             var btnXaml = this.FindControl<Button>("BtnXaml");
 
+            // 1. »‰ÃÌ» «·„’„„ Ê«·„Õ—— ⁄‘«‰ ‰ Õﬂ„ ›Ì ŸÂÊ—Â„
+            var designSurface = this.FindControl<Avalonia.Controls.Control>("MyDesignSurface");
+            var codeEditor = this.FindControl<Avalonia.Controls.Control>("MyCodeEditor");
+
             if (sender is Button clickedBtn && clickedBtn.Tag is string mode && mainGrid != null)
             {
-                if (btnDesign != null) { btnDesign.Background = Brushes.Transparent; btnDesign.FontWeight = FontWeight.Normal; }
-                if (btnSplit != null) { btnSplit.Background = Brushes.Transparent; btnSplit.FontWeight = FontWeight.Normal; }
-                if (btnXaml != null) { btnXaml.Background = Brushes.Transparent; btnXaml.FontWeight = FontWeight.Normal; }
+                //  ’›Ì— √·Ê«‰ «·“—«Ì—
+                if (btnDesign != null) { btnDesign.Background = Avalonia.Media.Brushes.Transparent; btnDesign.FontWeight = Avalonia.Media.FontWeight.Normal; }
+                if (btnSplit != null) { btnSplit.Background = Avalonia.Media.Brushes.Transparent; btnSplit.FontWeight = Avalonia.Media.FontWeight.Normal; }
+                if (btnXaml != null) { btnXaml.Background = Avalonia.Media.Brushes.Transparent; btnXaml.FontWeight = Avalonia.Media.FontWeight.Normal; }
 
-                clickedBtn.Background = Brush.Parse("#DDDDDD");
-                clickedBtn.FontWeight = FontWeight.Bold;
+                //  ·ÊÌ‰ «·“—«— «·‰‘ÿ ( ﬁœ—  €Ì— «··Ê‰ ··Ì Ì—ÌÕﬂ)
+                clickedBtn.Background = Avalonia.Media.Brush.Parse("#3E3E42");
+                clickedBtn.FontWeight = Avalonia.Media.FontWeight.Bold;
 
+                // 2.  Ê“Ì⁄ «·√»⁄«œ Ê«·≈Œ›«¡ Õ”» «·„Êœ:
                 if (mode == "Design")
                 {
-                    mainGrid.RowDefinitions = RowDefinitions.Parse("*, Auto, 0, 0");
+                    if (designSurface != null) designSurface.IsVisible = true;
+                    if (codeEditor != null) codeEditor.IsVisible = false; // ‰Œ›Ì «·„Õ——
+
+                    // «·’› «·√Ê· («·„’„„) Ì«Œœ «·‘«‘…° «· «‰Ì («·”»·Ì —) ÌŒ ›Ì° «· «·  («·»«—) Ì«Œœ „”«Õ Â »”
+                    mainGrid.RowDefinitions = RowDefinitions.Parse("*, 0, Auto");
                 }
                 else if (mode == "Split")
                 {
-                    mainGrid.RowDefinitions = RowDefinitions.Parse("*, Auto, 5, *");
+                    if (designSurface != null) designSurface.IsVisible = true;
+                    if (codeEditor != null) codeEditor.IsVisible = true;
+
+                    // ‰—Ã⁄ «·‘«‘… 3 ’›Ê› “Ì „« ’„„‰«Â«
+                    mainGrid.RowDefinitions = RowDefinitions.Parse("*, 5, *");
                 }
                 else if (mode == "XAML")
                 {
-                    mainGrid.RowDefinitions = RowDefinitions.Parse("0, Auto, 0, *");
+                    if (designSurface != null) designSurface.IsVisible = false; // ‰Œ›Ì «·„’„„
+                    if (codeEditor != null) codeEditor.IsVisible = true;
+
+                    // «·’› «·√Ê· Ê«· «‰Ì ÌŒ ›Ê«° Ê«·’› «· «·  («·»«— + «·„Õ——) Ì«Œœ «·‘«‘… ﬂ·Â«
+                    mainGrid.RowDefinitions = RowDefinitions.Parse("0, 0, *");
                 }
             }
         }

@@ -14,9 +14,9 @@ namespace VisualEditorApp.Views.Tools
 
         private void OnItemDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
         {
-            if (DataContext is SolutionExplorerViewModel viewModel && viewModel.SelectedItem is { Path: { } path } item)
+            if (DataContext is SolutionExplorerViewModel viewModel && viewModel.SelectedItem is { Path: { } path } clickedItem)
             {
-                if (item.Kind == SolutionItemKind.Document)
+                if (clickedItem.Kind == SolutionItemKind.Document ||  clickedItem.Kind == Models.SolutionItemKind.Project)
                 {
                     viewModel.OpenDocument(path);
                 }
