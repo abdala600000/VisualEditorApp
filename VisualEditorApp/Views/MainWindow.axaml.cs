@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using VisualEditorApp.Core;
 using VisualEditorApp.Models;
 using VisualEditorApp.ViewModels;
 using static VisualEditorApp.ViewModels.SolutionExplorerTool;
@@ -97,7 +98,7 @@ namespace VisualEditorApp.Views
                     string cleanXmlText = SanitizeXaml(xmlText);
 
                     // 3.  „—Ì— «·‰’ «·‰ŸÌ› ··„Õ—ﬂ
-                    var parsedObject = AvaloniaRuntimeXamlLoader.Parse<object>(cleanXmlText);
+                    var parsedObject = LiveDesignerCompiler.RenderLiveXaml(xmlText);
 
                     if (parsedObject is Control rootControl)
                     {

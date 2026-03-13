@@ -12,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
+using VisualEditorApp.Core;
 using VisualEditorApp.Models;
 using VisualEditorApp.Models.Tools;
 using VisualEditorApp.ViewModels;
@@ -485,11 +486,10 @@ public partial class WorkspaceView : UserControl
 
         try
         {
-            // 1. تنظيف الكود (اختياري بس مهم لو جايب كود من بره)
-            string cleanXml = SanitizeXaml(xaml);
+           
 
             // 2. تحويل النص إلى كنترول حقيقي
-            var parsedControl = AvaloniaRuntimeXamlLoader.Parse<object>(cleanXml);
+            var parsedControl = LiveDesignerCompiler.RenderLiveXaml(xaml);
 
             if (parsedControl != null)
             {

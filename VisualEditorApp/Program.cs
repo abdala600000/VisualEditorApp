@@ -1,5 +1,6 @@
-﻿using System;
-using Avalonia;
+﻿using Avalonia;
+using System;
+using XamlToCSharpGenerator.Runtime;
 
 namespace VisualEditorApp
 {
@@ -17,6 +18,7 @@ namespace VisualEditorApp
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
                 .WithInterFont()
+                .UseAvaloniaSourceGeneratedXaml()
                 .LogToTrace();
     }
 }
