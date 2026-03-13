@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dock="clr-namespace:Dock.Model.Mvvm.Controls;assembly=Dock.Model.Mvvm"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="300"
+             x:Class="VisualEditorApp.Views.ToolStubView"
+             x:DataType="dock:Tool">
+    <Grid Background="#1e1e1e">
+        <TextBlock Text="{Binding Title}" 
+                   Foreground="#555555" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"
+                   FontSize="18"
+                   FontWeight="SemiBold"/>
+    </Grid>
+</UserControl>

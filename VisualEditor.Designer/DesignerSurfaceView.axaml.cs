@@ -28,7 +28,11 @@ namespace VisualEditor.Designer
         public DesignerSurfaceView()
         {
             InitializeComponent();
-
+            MyZoomBorder.DoubleTapped += (s, e) =>
+            {
+                // لما تدوس مرتين يرجع التصميم في نص الشاشة بالظبط
+                MyZoomBorder.AutoFit();
+            };
             // تفعيل السحب والإفلات
             DragDrop.SetAllowDrop(DesignSurface, true);
             DesignSurface.AddHandler(DragDrop.DragOverEvent, DesignSurface_DragOver);
@@ -38,6 +42,32 @@ namespace VisualEditor.Designer
             DesignSurface.AddHandler(InputElement.PointerPressedEvent, DesignSurface_PreviewPointerPressed, RoutingStrategies.Tunnel);
             DesignSurface.AddHandler(InputElement.PointerMovedEvent, DesignSurface_PreviewPointerMoved, RoutingStrategies.Tunnel);
             DesignSurface.AddHandler(InputElement.PointerReleasedEvent, DesignSurface_PreviewPointerReleased, RoutingStrategies.Tunnel);
+            // 1. تفعيل استقبال أحداث الكيبورد
+            this.KeyDown += DesignerSurfaceView_KeyDown;
+        }
+
+        private void DesignerSurfaceView_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (MyZoomBorder == null) return;
+
+            switch (e.Key)
+            {
+                case Key.R: // إعادة الوضع الافتراضي (Reset)
+                    MyZoomBorder.ResetMatrix();
+                    break;
+
+                case Key.F: // ملء الشاشة بالتصميم (Fill)
+                    MyZoomBorder.Fill();
+                    break;
+
+                case Key.U: // توسيط التصميم (Uniform)
+                    MyZoomBorder.Uniform();
+                    break;
+
+                case Key.T: // التبديل التلقائي للزووم المناسب (AutoFit)
+                    MyZoomBorder.AutoFit();
+                    break;
+            }
         }
 
         // ==========================================

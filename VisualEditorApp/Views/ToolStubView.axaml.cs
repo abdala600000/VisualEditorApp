@@ -1,11 +1,10 @@
 using Avalonia.Controls;
-using VisualEditorApp.ViewModels;
 
 namespace VisualEditorApp.Views
 {
-    public partial class MainWindow : Window
+    public partial class ToolStubView : UserControl
     {
-        public MainWindow()
+        public ToolStubView()
         {
             InitializeComponent();
         }
