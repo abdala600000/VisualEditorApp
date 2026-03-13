@@ -33,11 +33,15 @@
                         HorizontalAlignment="Stretch"
                         Background="Transparent">
             
-            <ContentControl x:Name="DesignSurface" 
-                            Background="White" 
-                            HorizontalAlignment="Center" 
-                            VerticalAlignment="Center"
-                             /> 
+           <Border x:Name="DesignSurfaceWrapper"
+        
+        Background="White"
+        BoxShadow="0 10 30 0 #80000000"> 
+    
+    <ContentControl x:Name="DesignSurface" 
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" />
+</Border>
                             
         </paz:ZoomBorder>
                 <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
