@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AppDesignerFolder>ddd</AppDesignerFolder>
+  </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="11.3.12" />
+		<PackageReference Include="Avalonia.Controls.ColorPicker" Version="11.3.12" />
+		<PackageReference Include="Xaml.Behaviors" Version="11.3.9.5" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\VisualEditor.Core\VisualEditor.Core.csproj" />
+	</ItemGroup>
+</Project>

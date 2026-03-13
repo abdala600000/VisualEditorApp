@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="VisualEditor.Designer.DesignerSurfaceView">
+  
+    <UserControl.Styles>
+        <Style Selector="Thumb.ResizerThumb">
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="White" BorderBrush="DodgerBlue" BorderThickness="1"/>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </UserControl.Styles>
+
+    
+        
+        <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Grid Background="#F0F0F0" Name="DesignerContainer">
+                <ContentControl Name="DesignSurface" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
+                    <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
+                        <Grid>
+                            <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-5,-5,0,0" DragDelta="Resize_DragDelta" />
+                            <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" DragDelta="Resize_DragDelta" />
+                            <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-5,0,0,-5" DragDelta="Resize_DragDelta" />
+                            <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-5,-5" DragDelta="Resize_DragDelta" />
+                        </Grid>
+                    </Border>
+                </Canvas>
+            </Grid>
+        </ScrollViewer>
+
+</UserControl>

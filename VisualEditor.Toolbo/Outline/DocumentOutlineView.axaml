@@ -1,9 +1,12 @@
 ﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:m="using:VisualEditor.Toolbox.Outline"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:tools="using:VisualEditorApp.Models.Tools"
-             xmlns:models="using:VisualEditorApp.Models"
-             x:Class="VisualEditorApp.DocumentOutlineView"
-             x:DataType="tools:DocumentOutlineTool">
+            
+             x:Class="VisualEditor.Toolbox.Outline.DocumentOutlineView"
+             x:DataType="m:DocumentOutlineViewModel">
+      <UserControl.DataContext>
+		<m:DocumentOutlineViewModel/>
+    </UserControl.DataContext>
 
     <Grid RowDefinitions="Auto, *">
         <TextBox Grid.Row="0" Margin="5" Watermark="Search Elements..." />
@@ -13,7 +16,7 @@
                   SelectionMode="Single"
                   SelectionChanged="TreeView_SelectionChanged">
             <TreeView.ItemTemplate>
-                <TreeDataTemplate ItemsSource="{Binding Children}" DataType="{x:Type models:ElementNode}">
+                <TreeDataTemplate ItemsSource="{Binding Children}" DataType="{x:Type m:ElementNode}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <PathIcon Data="{StaticResource BoxIcon}" Width="12" Height="12" Foreground="DodgerBlue"/>
                         <TextBlock Text="{Binding Header}" VerticalAlignment="Center" FontSize="13"/>

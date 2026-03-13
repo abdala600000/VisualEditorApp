@@ -1,3 +1,7 @@
 <Solution>
+  <Project Path="VisualEditor.CodeEditor/VisualEditor.CodeEditor.csproj" Id="24410d76-5c03-493e-92cc-7cfabe1992af" />
+  <Project Path="VisualEditor.Core/VisualEditor.Core.csproj" Id="dcacea5b-2ab9-4e25-ae88-f5cbc0ef21e1" />
+  <Project Path="VisualEditor.Designer/VisualEditor.Designer.csproj" Id="01453d9b-d636-4973-aaf9-919c812ea766" />
+  <Project Path="VisualEditor.Toolbo/VisualEditor.Toolbox.csproj" Id="421274ff-0892-4ad7-8390-2d2855d215d3" />
   <Project Path="VisualEditorApp/VisualEditorApp.csproj" />
 </Solution>

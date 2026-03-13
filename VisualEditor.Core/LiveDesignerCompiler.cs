@@ -1,21 +1,14 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Media;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Emit;
-using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
-using XamlToCSharpGenerator.Compiler;
-namespace VisualEditorApp.Core
+
+namespace VisualEditor.Core
 {
     public static class LiveDesignerCompiler
     {
         public static Control RenderLiveXaml(string xamlText)
         {
-             
+
 
             try
             {
@@ -38,7 +31,7 @@ namespace VisualEditorApp.Core
                 // (اختياري) تحويل Window إلى UserControl
                 xamlText = xamlText.Replace("<Window", "<UserControl").Replace("</Window>", "</UserControl>");
                 // لتشاهد اسم دالة الـ Load في الإصدار الذي قمت بتثبيته (قد تكون RuntimeLoader أو XamlLoader)
-                var loadedObject = XamlToCSharpGenerator.Runtime.AvaloniaSourceGeneratedXamlLoader.Load(xamlText,designMode:true);
+                var loadedObject = XamlToCSharpGenerator.Runtime.AvaloniaSourceGeneratedXamlLoader.Load(xamlText, designMode: true);
 
                 if (loadedObject is Control control)
                 {

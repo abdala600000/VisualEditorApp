@@ -1,14 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:behaviors="using:VisualEditorApp.Behaviors"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:VisualEditorApp.ViewModels"
-             xmlns:m="using:VisualEditorApp.Models"
-             xmlns:tools="using:VisualEditorApp.Models.Tools"
-             xmlns:i="clr-namespace:Avalonia.Xaml.Interactivity;assembly=Avalonia.Xaml.Interactivity"
-             xmlns:idd="clr-namespace:Avalonia.Xaml.Interactions.DragAndDrop;assembly=Avalonia.Xaml.Interactions.DragAndDrop"
-             x:Class="VisualEditorApp.ToolboxView"
-             x:DataType="tools:ToolboxTool">
-
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:m="using:VisualEditor.Toolbox.Controls"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="m:ToolboxViewModels"
+             x:Class="VisualEditor.Toolbox.ToolboxView">
+    <UserControl.DataContext>
+		<m:ToolboxViewModels/>
+    </UserControl.DataContext>
     <DockPanel Background="#F3F3F3">
         <Border DockPanel.Dock="Top" BorderBrush="#CCC" BorderThickness="0,0,0,1" Padding="5">
             <TextBlock Text="Toolbox" FontWeight="Bold" Foreground="#333"/>
@@ -20,7 +20,7 @@
                     
                     <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent" Cursor="Hand" Margin="4">
                         <Interaction.Behaviors>
-                           <behaviors:ToolboxDragBehavior />
+                           <m:ToolboxDragBehavior />
                         </Interaction.Behaviors>
                         
                         <PathIcon Data="{Binding IconPath}" Width="16" Height="16" Foreground="#555"/>

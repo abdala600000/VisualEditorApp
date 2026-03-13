@@ -4,6 +4,7 @@ using Dock.Model.Mvvm;
 using Dock.Model.Mvvm.Controls;
 using System;
 using System.Collections.Generic;
+using VisualEditor.Toolbox.Outline;
 using VisualEditorApp.Models.Tools;
 using VisualEditorApp.ViewModels;
 

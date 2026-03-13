@@ -4,6 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:models="using:VisualEditorApp.Models"
+        xmlns:outline="using:VisualEditor.Toolbox.Outline"
+        xmlns:prop="using:VisualEditor.Toolbox.Prop"
+        xmlns:toolbox="using:VisualEditor.Toolbox"
         xmlns:tools="using:VisualEditorApp.Models.Tools"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         xmlns:ae="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
@@ -22,13 +25,13 @@
         </DataTemplate>
         
         <DataTemplate DataType="{x:Type tools:ToolboxTool}">
-            <local:ToolboxView />
+            <toolbox:ToolboxView />
         </DataTemplate>
          <DataTemplate DataType="{x:Type tools:PropertiesTool}">
-            <local:PropertiesView />
+            <prop:PropertiesView />
         </DataTemplate>
             <DataTemplate DataType="{x:Type tools:DocumentOutlineTool}">
-            <local:DocumentOutlineView />
+            <outline:DocumentOutlineView />
         </DataTemplate>
              <DataTemplate DataType="{x:Type vm:SolutionExplorerTool}">
             <local:SolutionExplorerView />

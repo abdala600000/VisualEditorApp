@@ -1,28 +1,33 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
-using VisualEditorApp.Models;
-using VisualEditorApp.Models.Tools;
-using VisualEditorApp.ViewModels;
+using CommunityToolkit.Mvvm.Messaging;
+using System.Xml.Linq;
+using VisualEditor.Core.Messages;
+using VisualEditor.Toolbox.Prop;
+ 
 
-namespace VisualEditorApp;
+namespace VisualEditor.Toolbox.Outline;
 
 public partial class DocumentOutlineView : UserControl
 {
     public DocumentOutlineView()
     {
         InitializeComponent();
+
+      
     }
+
+
+
     private void TreeView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count > 0 && e.AddedItems[0] is ElementNode selectedNode)
         {
             if (selectedNode.RelatedControl != null)
             {
-                // 1. ÊÍÏíÏ ÇáÚäÕÑ İí ÇáÏíÒÇíäÑ (ÅÙåÇÑ ÇáãÑÈÚÇÊ ÇáÒÑŞÇÁ)
-                WorkspaceView.Instance?.SelectControl(selectedNode.RelatedControl);
-                // 2. ÇÓÊÏÚÇÁ ÇáßæÏ ÈÊÇÚß ÃäÊ (PropertiesView) æÊãÑíÑ ÇáÚäÕÑ áå
-                PropertiesView.Instance?.SetSelectedElement(selectedNode.RelatedControl);
+                WeakReferenceMessenger.Default.Send(new ControlSelectedMessage(selectedNode.RelatedControl, "Outline"));
 
             }
         }
