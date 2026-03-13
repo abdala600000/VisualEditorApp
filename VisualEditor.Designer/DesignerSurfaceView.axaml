@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:paz="clr-namespace:Avalonia.Controls.PanAndZoom;assembly=PanAndZoom"
              x:Class="VisualEditor.Designer.DesignerSurfaceView">
   
     <UserControl.Styles>
@@ -21,7 +22,24 @@
         
         <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
             <Grid Background="#F0F0F0" Name="DesignerContainer">
-                <ContentControl Name="DesignSurface" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+             <paz:ZoomBorder x:Name="MyZoomBorder" 
+                        Stretch="None" 
+                        ZoomSpeed="1.2" 
+                        PanButton="Middle"
+                        EnableConstrains="False"
+                        ClipToBounds="True" 
+                        Focusable="True"
+                        VerticalAlignment="Stretch" 
+                        HorizontalAlignment="Stretch"
+                        Background="Transparent">
+            
+            <ContentControl x:Name="DesignSurface" 
+                            Background="White" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center"
+                             /> 
+                            
+        </paz:ZoomBorder>
                 <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
                     <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
                         <Grid>

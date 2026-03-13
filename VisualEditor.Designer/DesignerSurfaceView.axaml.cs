@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.PanAndZoom;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -311,6 +312,42 @@ namespace VisualEditor.Designer
                 current = current.Parent as Control;
             }
             return DesignSurface.Content as Control;
+        }
+
+
+        // ضيف الدالة دي جوه كلاس DesignerSurfaceView
+        public void SetZoomLevel(string zoomMode)
+        {
+            if (MyZoomBorder == null) return;
+
+            // 1. لو اختار Fit to Screen، الدوكيومنت بيقول نستخدم دالة Uniform
+            if (zoomMode == "Fit to Screen")
+            {
+                MyZoomBorder.Uniform();
+                return;
+            }
+
+            // 2. تحديد نسبة الزووم المطلوبة
+            double targetZoom = 1.0;
+            if (zoomMode == "25%") targetZoom = 0.25;
+            else if (zoomMode == "50%") targetZoom = 0.50;
+            else if (zoomMode == "100%") targetZoom = 1.0;
+
+            // 3. قراءة الزووم الحالي (زي ما الدوكيومنت قال باستخدام ZoomX)
+            double currentZoom = MyZoomBorder.ZoomX;
+
+            if (currentZoom > 0)
+            {
+                // حساب النسبة اللي هنضرب فيها عشان نوصل للرقم المطلوب
+                double relativeZoom = targetZoom / currentZoom;
+
+                // حساب منتصف الشاشة عشان التكبير والتصغير يكون من النص بالظبط
+                double centerX = MyZoomBorder.Bounds.Width / 2;
+                double centerY = MyZoomBorder.Bounds.Height / 2;
+
+                // 4. استدعاء دالة Zoom كـ Method ونديها الإحداثيات
+                MyZoomBorder.Zoom(relativeZoom, centerX, centerY);
+            }
         }
     }
 }
