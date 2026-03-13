@@ -28,7 +28,6 @@ namespace VisualEditorApp.Services
                     ? solutionDirectory
                     : Path.GetDirectoryName(project.FilePath);
 
-                // 1. تجميع الملفات (وشيلنا AnalyzerConfigDocuments لأنها بتجيب ملفات من الويندوز)
                 var allPaths = project.Documents
                     .Concat(project.AdditionalDocuments)
                     .Where(d => d.FilePath != null)
@@ -41,9 +40,8 @@ namespace VisualEditorApp.Services
                     allPaths.AddRange(extraUiFiles);
                 }
 
-                // 3. الفلتر الحديدي الجديد (بيمنع أي حاجة بره فولدر المشروع + بيمنع bin و obj)
                 var cleanPaths = allPaths
-                    .Where(p => projectDirectory != null && p.StartsWith(projectDirectory, StringComparison.OrdinalIgnoreCase)) // 👈 السطر ده اللي هيخفي الـ C تماماً
+                    .Where(p => projectDirectory != null && p.StartsWith(projectDirectory, StringComparison.OrdinalIgnoreCase))
                     .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                              && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                              && !p.Contains($"{Path.AltDirectorySeparatorChar}bin{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
@@ -53,11 +51,32 @@ namespace VisualEditorApp.Services
 
                 AddDocumentsWithNesting(projectNode, projectDirectory, cleanPaths);
 
-                 
+                // 💡 السر هنا: استدعاء دالة الترتيب بعد بناء فرع المشروع وقبل عرضه
+                SortNodes(projectNode);
             }
 
             root.IsExpanded = true;
             return root;
+        }
+
+        // 💡 الدالة السحرية لترتيب الشجرة (مجلدات أولاً، ثم ملفات، بترتيب أبجدي)
+        private static void SortNodes(SolutionItemViewModel node)
+        {
+            // 1. فرز الأبناء: الفولدرات والمشاريع تاخد أولوية (1)، والملفات تاخد (0)، وبعدها ترتيب أبجدي بالاسم
+            var sortedChildren = node.Children
+                .OrderByDescending(c => c.Kind == SolutionItemKind.Folder || c.Kind == SolutionItemKind.Project ? 1 : 0)
+                .ThenBy(c => c.Name)
+                .ToList();
+
+            // 2. تفريغ القائمة العشوائية
+            node.Children.Clear();
+
+            // 3. إعادة إضافتها بالترتيب النظيف
+            foreach (var child in sortedChildren)
+            {
+                node.Children.Add(child);
+                SortNodes(child); // ترتيب العناصر الداخلية لكل فولدر (Recursion)
+            }
         }
 
         private static IEnumerable<string> GetExtraUiFiles(string projectDirectory)
@@ -65,8 +84,8 @@ namespace VisualEditorApp.Services
             var extraFiles = new List<string>();
             if (!Directory.Exists(projectDirectory)) return extraFiles;
 
-            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".xml", ".axaml", ".xaml", ".json" };
-            var excludedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".vs", "packages" };
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".xml", ".axaml", ".xaml", ".json", ".md" };
+            var excludedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".vs", "packages", ".git" };
 
             var dirInfo = new DirectoryInfo(projectDirectory);
             SearchDirectory(dirInfo, allowedExtensions, excludedFolders, extraFiles);
@@ -96,10 +115,7 @@ namespace VisualEditorApp.Services
             catch { }
         }
 
-        private static void AddDocumentsWithNesting(
-            SolutionItemViewModel projectNode,
-            string? projectDirectory,
-            IEnumerable<string> filePaths)
+        private static void AddDocumentsWithNesting(SolutionItemViewModel projectNode, string? projectDirectory, IEnumerable<string> filePaths)
         {
             foreach (var path in filePaths)
             {
@@ -107,7 +123,6 @@ namespace VisualEditorApp.Services
                 AddPath(projectNode, relativePath, path);
             }
 
-            // 4. النيستنج الصحيح: ملفات الأكواد تكون تحت ملفات التصميم
             NestFileTypes(projectNode, ".xml.cs", ".xml");
             NestFileTypes(projectNode, ".axaml.cs", ".axaml");
             NestFileTypes(projectNode, ".xaml.cs", ".xaml");
