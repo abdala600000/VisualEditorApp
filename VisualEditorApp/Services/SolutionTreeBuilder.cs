@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -28,38 +28,121 @@ namespace VisualEditorApp.Services
                     ? solutionDirectory
                     : Path.GetDirectoryName(project.FilePath);
 
-                AddDocuments(projectNode, projectDirectory, project.Documents);
-                AddDocuments(projectNode, projectDirectory, project.AdditionalDocuments);
-                AddDocuments(projectNode, projectDirectory, project.AnalyzerConfigDocuments);
+                // 1. تجميع الملفات (وشيلنا AnalyzerConfigDocuments لأنها بتجيب ملفات من الويندوز)
+                var allPaths = project.Documents
+                    .Concat(project.AdditionalDocuments)
+                    .Where(d => d.FilePath != null)
+                    .Select(d => d.FilePath!)
+                    .ToList();
+
+                if (projectDirectory != null)
+                {
+                    var extraUiFiles = GetExtraUiFiles(projectDirectory);
+                    allPaths.AddRange(extraUiFiles);
+                }
+
+                // 3. الفلتر الحديدي الجديد (بيمنع أي حاجة بره فولدر المشروع + بيمنع bin و obj)
+                var cleanPaths = allPaths
+                    .Where(p => projectDirectory != null && p.StartsWith(projectDirectory, StringComparison.OrdinalIgnoreCase)) // 👈 السطر ده اللي هيخفي الـ C تماماً
+                    .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                             && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                             && !p.Contains($"{Path.AltDirectorySeparatorChar}bin{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                             && !p.Contains($"{Path.AltDirectorySeparatorChar}obj{Path.AltDirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                AddDocumentsWithNesting(projectNode, projectDirectory, cleanPaths);
+
+                 
             }
 
             root.IsExpanded = true;
             return root;
         }
 
-        private static void AddDocuments(
-            SolutionItemViewModel projectNode,
-            string? projectDirectory,
-            IEnumerable<TextDocument> documents)
+        private static IEnumerable<string> GetExtraUiFiles(string projectDirectory)
         {
-            foreach (var document in documents)
+            var extraFiles = new List<string>();
+            if (!Directory.Exists(projectDirectory)) return extraFiles;
+
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".xml", ".axaml", ".xaml", ".json" };
+            var excludedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", ".vs", "packages" };
+
+            var dirInfo = new DirectoryInfo(projectDirectory);
+            SearchDirectory(dirInfo, allowedExtensions, excludedFolders, extraFiles);
+
+            return extraFiles;
+        }
+
+        private static void SearchDirectory(DirectoryInfo dir, HashSet<string> extensions, HashSet<string> excluded, List<string> results)
+        {
+            if (excluded.Contains(dir.Name)) return;
+
+            try
             {
-                if (document.FilePath is null)
+                foreach (var file in dir.GetFiles())
                 {
-                    continue;
+                    if (extensions.Contains(file.Extension))
+                    {
+                        results.Add(file.FullName);
+                    }
                 }
 
-                var relativePath = GetRelativePath(projectDirectory, document.FilePath);
-                AddPath(projectNode, relativePath, document.FilePath);
+                foreach (var subDir in dir.GetDirectories())
+                {
+                    SearchDirectory(subDir, extensions, excluded, results);
+                }
+            }
+            catch { }
+        }
+
+        private static void AddDocumentsWithNesting(
+            SolutionItemViewModel projectNode,
+            string? projectDirectory,
+            IEnumerable<string> filePaths)
+        {
+            foreach (var path in filePaths)
+            {
+                var relativePath = GetRelativePath(projectDirectory, path);
+                AddPath(projectNode, relativePath, path);
+            }
+
+            // 4. النيستنج الصحيح: ملفات الأكواد تكون تحت ملفات التصميم
+            NestFileTypes(projectNode, ".xml.cs", ".xml");
+            NestFileTypes(projectNode, ".axaml.cs", ".axaml");
+            NestFileTypes(projectNode, ".xaml.cs", ".xaml");
+        }
+
+        private static void NestFileTypes(SolutionItemViewModel node, string childExt, string parentExt)
+        {
+            var children = node.Children.ToList();
+            foreach (var child in children)
+            {
+                if (child.Kind == SolutionItemKind.Folder || child.Kind == SolutionItemKind.Project || child.Kind == SolutionItemKind.Solution)
+                {
+                    NestFileTypes(child, childExt, parentExt);
+                }
+            }
+
+            var possibleParents = node.Children.Where(c => c.Kind == SolutionItemKind.Document && c.Name.EndsWith(parentExt, StringComparison.OrdinalIgnoreCase)).ToList();
+            var possibleChildren = node.Children.Where(c => c.Kind == SolutionItemKind.Document && c.Name.EndsWith(childExt, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            foreach (var childDoc in possibleChildren)
+            {
+                var parentName = childDoc.Name.Substring(0, childDoc.Name.Length - childExt.Length) + parentExt;
+                var parent = possibleParents.FirstOrDefault(p => string.Equals(p.Name, parentName, StringComparison.OrdinalIgnoreCase));
+
+                if (parent != null)
+                {
+                    node.Children.Remove(childDoc);
+                    parent.Children.Add(childDoc);
+                }
             }
         }
 
         private static string GetRelativePath(string? basePath, string fullPath)
         {
-            if (string.IsNullOrWhiteSpace(basePath))
-            {
-                return Path.GetFileName(fullPath);
-            }
+            if (string.IsNullOrWhiteSpace(basePath)) return Path.GetFileName(fullPath);
 
             var relativePath = Path.GetRelativePath(basePath, fullPath);
             return relativePath.StartsWith("..", StringComparison.Ordinal)
@@ -80,7 +163,10 @@ namespace VisualEditorApp.Services
 
                 if (isLeaf)
                 {
-                    current.Children.Add(new SolutionItemViewModel(SolutionItemKind.Document, segment, fullPath));
+                    if (!current.Children.Any(c => string.Equals(c.Path, fullPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        current.Children.Add(new SolutionItemViewModel(SolutionItemKind.Document, segment, fullPath));
+                    }
                     continue;
                 }
 
@@ -93,7 +179,6 @@ namespace VisualEditorApp.Services
                     folder = new SolutionItemViewModel(SolutionItemKind.Folder, segment, null);
                     current.Children.Add(folder);
                 }
-
                 current = folder;
             }
         }

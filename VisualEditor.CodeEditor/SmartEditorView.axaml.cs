@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using AvaloniaEdit.Highlighting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -59,6 +59,15 @@ namespace VisualEditor.CodeEditor
 
             _editor.TextChanged += OnEditorTextChanged;
             EditorContainer.Content = _editor;
+        }
+
+        public void SetHighlighting(string extension)
+        {
+            var definition = HighlightingManager.Instance.GetDefinitionByExtension(extension);
+            if (definition != null)
+            {
+                _editor.SyntaxHighlighting = definition;
+            }
         }
 
         // دالة عشان الشاشة الرئيسية تبعت كود للمحرر (زي وقت الـ Drag & Drop)

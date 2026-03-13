@@ -3,9 +3,9 @@ using Avalonia.Markup.Xaml;
 
 namespace VisualEditorApp.Views.Tools
 {
-    public partial class StructureToolView : UserControl
+    public partial class ToolboxView : UserControl
     {
-        public StructureToolView()
+        public ToolboxView()
         {
             AvaloniaXamlLoader.Load(this);
         }

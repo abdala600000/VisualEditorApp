@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +14,8 @@ namespace VisualEditorApp.Services
     {
         private MSBuildWorkspace? _workspace;
 
-        public async Task<SolutionLoadResult> LoadAsync(string solutionPath, CancellationToken cancellationToken)
+        // €Ì—‰« «”„ «·»«—«„Ì — ·‹ filePath ⁄‘«‰ »ﬁÏ »Ì” ﬁ»· «·‰Ê⁄Ì‰
+        public async Task<SolutionLoadResult> LoadAsync(string filePath, CancellationToken cancellationToken)
         {
             if (!MSBuildLocator.IsRegistered)
             {
@@ -27,10 +29,39 @@ namespace VisualEditorApp.Services
             {
                 ["UseSharedCompilation"] = "false"
             });
+
             workspace.RegisterWorkspaceFailedHandler(args => diagnostics.Add(args.Diagnostic));
 
-            var solution = await workspace.OpenSolutionAsync(solutionPath, progress: null, cancellationToken);
-            _workspace = workspace;
+            Solution? solution = null;
+
+            try
+            {
+                // 1. ·Ê «·„·› Solution (.sln)
+                if (filePath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)|| filePath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
+                {
+                    solution = await workspace.OpenSolutionAsync(filePath, progress: null, cancellationToken);
+                }
+                // 2. ·Ê «·„·› Project (.csproj)
+                else if (filePath.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+                {
+                    var project = await workspace.OpenProjectAsync(filePath, progress: null, cancellationToken);
+
+                    // «·”Õ— Â‰«: «·‹ Workspace »Ì⁄„· Solution  ·ﬁ«∆Ì ÌÕ ÊÌ ⁄·Ï Â–« «·„‘—Ê⁄
+                    solution = project.Solution;
+                }
+                else
+                {
+                    // ·Ê «„ œ«œ €Ì— „œ⁄Ê„
+                    throw new NotSupportedException("«·„·› €Ì— „œ⁄Ê„. Ì—ÃÏ «Œ Ì«— „·› .sln √Ê .csproj");
+                }
+
+                _workspace = workspace;
+            }
+            catch (Exception ex)
+            {
+                // Ì›÷· œ«Ì„« «’ÿÌ«œ «·√Œÿ«¡ Â‰« ⁄‘«‰ ·Ê „·› «·„‘—Ê⁄ ›ÌÂ „‘ﬂ·… √Ê ‰«ﬁ’
+                System.Diagnostics.Debug.WriteLine($"Error loading workspace: {ex.Message}");
+            }
 
             return new SolutionLoadResult(solution, diagnostics);
         }

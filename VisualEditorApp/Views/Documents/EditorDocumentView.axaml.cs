@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
-using AvaloniaEdit;
+using VisualEditorApp.ViewModels.Documents;
+using VisualEditor.CodeEditor;
 
 namespace VisualEditorApp.Views.Documents
 {
@@ -8,7 +9,19 @@ namespace VisualEditorApp.Views.Documents
     {
         public EditorDocumentView()
         {
-            InitializeComponent();
+            AvaloniaXamlLoader.Load(this);
+            DataContextChanged += (s, e) =>
+            {
+                if (DataContext is EditorDocumentViewModel vm)
+                {
+                    var smartEditor = this.FindControl<SmartEditorView>("SmartEditor");
+                    if (smartEditor != null)
+                    {
+                        smartEditor.SetXamlText(vm.Text);
+                        smartEditor.SetHighlighting(vm.Extension);
+                    }
+                }
+            };
         }
     }
 }

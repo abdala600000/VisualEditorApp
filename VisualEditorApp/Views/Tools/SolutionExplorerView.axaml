@@ -13,18 +13,23 @@
     <tools:SolutionItemKindToIconConverter x:Key="SolutionItemIconConverter" />
   </UserControl.Resources>
   <Border Background="{DynamicResource RiderPanelBrush}">
+      
     <TreeView ItemsSource="{Binding Items}"
-              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-              DoubleTapped="OnTreeViewDoubleTapped">
+              SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
       <TreeView.ItemTemplate>
         <TreeDataTemplate DataType="models:SolutionItemViewModel" ItemsSource="{Binding Children}">
-          <StackPanel Orientation="Horizontal" Spacing="6">
+            
+          <StackPanel Orientation="Horizontal" Spacing="6" 
+                      Background="Transparent"
+                      DoubleTapped="OnItemDoubleTapped">
+              
             <PathIcon Data="{Binding Kind, Converter={StaticResource SolutionItemIconConverter}}"
                       Width="14"
                       Height="14"
                       Foreground="{DynamicResource RiderMutedTextBrush}" />
             <TextBlock Text="{Binding Name}" />
           </StackPanel>
+            
         </TreeDataTemplate>
       </TreeView.ItemTemplate>
     </TreeView>

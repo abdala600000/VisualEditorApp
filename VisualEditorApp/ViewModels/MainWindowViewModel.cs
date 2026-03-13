@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using Dock.Model.Mvvm.Controls;
 using VisualEditorApp.ViewModels.Tools;
 using VisualEditorApp.ViewModels.Documents;
 using VisualEditorApp.Services;
@@ -23,7 +24,7 @@ namespace VisualEditorApp.ViewModels
         [ObservableProperty] private string _statusText = "Ready";
         [ObservableProperty] private string _solutionName = "No solution";
         [ObservableProperty] private string _activeDocumentStatus = "No document";
-        [ObservableProperty] private EditorDocumentViewModel? _activeDocument;
+        [ObservableProperty] private Document? _activeDocument;
         [ObservableProperty] private bool _isDarkTheme = true;
 
         public MainWindowViewModel()
@@ -45,7 +46,8 @@ namespace VisualEditorApp.ViewModels
         [RelayCommand]
         private void SaveFile()
         {
-            ActiveDocument?.Save();
+            if (ActiveDocument is EditorDocumentViewModel editor) editor.Save();
+            else if (ActiveDocument is WorkspaceViewModel workspace) workspace.Save();
             StatusText = $"Saved {ActiveDocument?.Title}";
         }
 
@@ -54,12 +56,10 @@ namespace VisualEditorApp.ViewModels
         {
             if (_factory.DocumentDock?.VisibleDockables is not null)
             {
-                foreach (var document in _factory.DocumentDock.VisibleDockables.OfType<EditorDocumentViewModel>())
+                foreach (var dockable in _factory.DocumentDock.VisibleDockables)
                 {
-                    if (document.IsModified)
-                    {
-                        document.Save();
-                    }
+                    if (dockable is EditorDocumentViewModel editor && editor.IsModified) editor.Save();
+                    else if (dockable is WorkspaceViewModel workspace && workspace.IsModified) workspace.Save();
                 }
             }
             StatusText = "Saved all documents";

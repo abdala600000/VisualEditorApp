@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 
 namespace VisualEditorApp.Views.Tools
 {
@@ -6,7 +7,7 @@ namespace VisualEditorApp.Views.Tools
     {
         public PropertiesToolView()
         {
-            InitializeComponent();
+            AvaloniaXamlLoader.Load(this);
         }
     }
 }

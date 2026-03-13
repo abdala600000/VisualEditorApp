@@ -3,9 +3,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:VisualEditorApp.ViewModels.Tools"
-             xmlns:outline="clr-namespace:VisualEditor.Toolbox.Outline;assembly=VisualEditor.Toolbox"
+             xmlns:toolbox="clr-namespace:VisualEditor.Toolbox.Controls;assembly=VisualEditor.Toolbox"
+             xmlns:toolboxView="clr-namespace:VisualEditor.Toolbox;assembly=VisualEditor.Toolbox"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="VisualEditorApp.Views.Tools.StructureToolView"
-             x:DataType="vm:StructureToolViewModel">
-    <outline:DocumentOutlineView DataContext="{Binding Outline}" />
+             x:Class="VisualEditorApp.Views.Tools.ToolboxView"
+             x:DataType="vm:ToolboxViewModel"
+             x:CompileBindings="True">
+    <toolboxView:ToolboxView  />
 </UserControl>

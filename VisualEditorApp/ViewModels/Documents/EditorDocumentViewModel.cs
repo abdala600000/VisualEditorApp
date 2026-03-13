@@ -30,6 +30,8 @@ namespace VisualEditorApp.ViewModels.Documents
 
         public TextDocument Document { get; }
 
+        public string Text => Document.Text;
+
         public string EncodingName => _encoding.WebName;
 
         public string Extension => Path.GetExtension(FilePath);

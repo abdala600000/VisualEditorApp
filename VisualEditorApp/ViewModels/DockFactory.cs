@@ -19,6 +19,7 @@ namespace VisualEditorApp.ViewModels
         public DockFactory(Action<string> openDocument)
         {
             SolutionExplorer = new SolutionExplorerViewModel(openDocument);
+            Toolbox = new ToolboxViewModel();
             StructureTool = new StructureToolViewModel();
             PropertiesTool = new PropertiesToolViewModel();
             ProblemsTool = new ProblemsToolViewModel();
@@ -26,6 +27,7 @@ namespace VisualEditorApp.ViewModels
         }
 
         public SolutionExplorerViewModel SolutionExplorer { get; }
+        public ToolboxViewModel Toolbox { get; }
         public StructureToolViewModel StructureTool { get; }
         public PropertiesToolViewModel PropertiesTool { get; }
         public ProblemsToolViewModel ProblemsTool { get; }
@@ -51,7 +53,7 @@ namespace VisualEditorApp.ViewModels
                 Alignment = Alignment.Left,
                 GripMode = GripMode.Visible,
                 ActiveDockable = SolutionExplorer,
-                VisibleDockables = CreateList<IDockable>(SolutionExplorer, StructureTool)
+                VisibleDockables = CreateList<IDockable>(SolutionExplorer, Toolbox, StructureTool)
             };
 
             var rightDock = new ToolDock
@@ -115,30 +117,49 @@ namespace VisualEditorApp.ViewModels
         public void OpenDocument(string path)
         {
             if (_documentDock is null) return;
-
-            var existing = _documentDock.VisibleDockables?
-                .OfType<EditorDocumentViewModel>()
-                .FirstOrDefault(doc => string.Equals(doc.FilePath, path, StringComparison.OrdinalIgnoreCase));
-
-            if (existing is not null)
-            {
-                SetActiveDockable(existing);
-                SetFocusedDockable(_documentDock, existing);
-                return;
-            }
-
-            var document = EditorDocumentViewModel.LoadFromFile(path);
-            document.Id = path;
             _documentDock.VisibleDockables ??= CreateList<IDockable>();
-            AddDockable(_documentDock, document);
-            SetActiveDockable(document);
-            SetFocusedDockable(_documentDock, document);
+
+            var extension = System.IO.Path.GetExtension(path).ToLowerInvariant();
+            var isAxaml = extension == ".axaml" || extension == ".xml";
+
+            if (isAxaml)
+            {
+                var existing = _documentDock.VisibleDockables
+                    .OfType<WorkspaceViewModel>()
+                    .FirstOrDefault(doc => string.Equals(doc.FilePath, path, StringComparison.OrdinalIgnoreCase));
+
+                if (existing is not null)
+                {
+                    _documentDock.ActiveDockable = existing;
+                    return;
+                }
+
+                var workspace = WorkspaceViewModel.LoadFromFile(path);
+                AddDockable(_documentDock, workspace);
+                _documentDock.ActiveDockable = workspace;
+            }
+            else
+            {
+                var existing = _documentDock.VisibleDockables
+                    .OfType<EditorDocumentViewModel>()
+                    .FirstOrDefault(doc => string.Equals(doc.FilePath, path, StringComparison.OrdinalIgnoreCase));
+
+                if (existing is not null)
+                {
+                    _documentDock.ActiveDockable = existing;
+                    return;
+                }
+
+                var document = EditorDocumentViewModel.LoadFromFile(path);
+                AddDockable(_documentDock, document);
+                _documentDock.ActiveDockable = document;
+            }
         }
 
         public void CloseAllDocuments()
         {
             if (_documentDock?.VisibleDockables is null) return;
-            var documents = _documentDock.VisibleDockables.OfType<EditorDocumentViewModel>().ToList();
+            var documents = _documentDock.VisibleDockables.ToList();
             foreach (var document in documents)
             {
                 RemoveDockable(document, true);
@@ -152,6 +173,7 @@ namespace VisualEditorApp.ViewModels
                 [nameof(IRootDock)] = () => _rootDock,
                 [nameof(IDocumentDock)] = () => _documentDock,
                 ["SolutionExplorer"] = () => SolutionExplorer,
+                ["Toolbox"] = () => Toolbox,
                 ["Structure"] = () => StructureTool,
                 ["Properties"] = () => PropertiesTool,
                 ["Problems"] = () => ProblemsTool,

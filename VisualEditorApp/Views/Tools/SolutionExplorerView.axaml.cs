@@ -12,11 +12,14 @@ namespace VisualEditorApp.Views.Tools
             InitializeComponent();
         }
 
-        private void OnTreeViewDoubleTapped(object? sender, RoutedEventArgs e)
+        private void OnItemDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
         {
-            if (DataContext is SolutionExplorerViewModel viewModel && viewModel.SelectedItem is { IsLeaf: true, Path: { } path })
+            if (DataContext is SolutionExplorerViewModel viewModel && viewModel.SelectedItem is { Path: { } path } item)
             {
-                viewModel.OpenDocument(path);
+                if (item.Kind == SolutionItemKind.Document)
+                {
+                    viewModel.OpenDocument(path);
+                }
             }
         }
     }
