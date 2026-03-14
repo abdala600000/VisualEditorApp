@@ -34,5 +34,8 @@ namespace VisualEditorApp.ViewModels.Tools
         {
             Items.Clear();
         }
+
+
+
     }
 }

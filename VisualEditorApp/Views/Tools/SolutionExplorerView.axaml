@@ -9,11 +9,12 @@
              mc:Ignorable="d"
              d:DesignWidth="260" d:DesignHeight="400"
              x:DataType="vm:SolutionExplorerViewModel" x:CompileBindings="True">
+    
   <UserControl.Resources>
     <tools:SolutionItemKindToIconConverter x:Key="SolutionItemIconConverter" />
   </UserControl.Resources>
+    
   <Border Background="{DynamicResource RiderPanelBrush}">
-      
     <TreeView ItemsSource="{Binding Items}"
               SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
       <TreeView.ItemTemplate>
@@ -23,11 +24,29 @@
                       Background="Transparent"
                       DoubleTapped="OnItemDoubleTapped">
               
+            <StackPanel.ContextMenu>
+               <ContextMenu>
+    <MenuItem Header="Open" Command="{Binding OpenCommand}" />
+    <Separator />
+    <MenuItem Header="Set as Startup Project" 
+              Command="{Binding SetAsStartupCommand}" 
+              IsVisible="{Binding IsProjectNode}">
+        <MenuItem.Icon>
+            <PathIcon Data="{StaticResource PlayIcon}" /> </MenuItem.Icon>
+    </MenuItem>
+    
+    <Separator />
+    <MenuItem Header="Build Project" Command="{Binding BuildCommand}" IsVisible="{Binding IsProjectNode}" />
+    <MenuItem Header="Clean Project" Command="{Binding CleanCommand}" IsVisible="{Binding IsProjectNode}" />
+</ContextMenu>
+            </StackPanel.ContextMenu>
+
             <PathIcon Data="{Binding Kind, Converter={StaticResource SolutionItemIconConverter}}"
                       Width="14"
                       Height="14"
                       Foreground="{DynamicResource RiderMutedTextBrush}" />
             <TextBlock Text="{Binding Name}" />
+              
           </StackPanel>
             
         </TreeDataTemplate>

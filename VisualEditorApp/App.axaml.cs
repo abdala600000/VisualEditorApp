@@ -14,6 +14,8 @@ namespace VisualEditorApp
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
+            //  ›⁄Ì· „Õ—ﬂ AXSG ⁄‘«‰ Ì‘Ê› «·„ﬂ »«  «··Ì »‰Õ„·Â«
+            XamlToCSharpGenerator.Runtime.AvaloniaSourceGeneratedXamlLoader.Enable();
         }
 
         public override void OnFrameworkInitializationCompleted()
