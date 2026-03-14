@@ -28,6 +28,18 @@ namespace VisualEditor.Designer
         public DesignerSurfaceView()
         {
             InitializeComponent();
+            // 1. ربط المربع الأزرق مع أي حركة سحب أو زووم
+            MyZoomBorder.PropertyChanged += (s, e) =>
+            {
+                if (e.Property.Name == "ZoomX" || e.Property.Name == "ZoomY" ||
+                    e.Property.Name == "OffsetX" || e.Property.Name == "OffsetY")
+                {
+                    UpdateAdornerPosition();
+                }
+            };
+
+            // 2. تحديث المربع في حالة تغيير حجم الشاشة نفسها
+            this.LayoutUpdated += (s, e) => UpdateAdornerPosition();
             MyZoomBorder.DoubleTapped += (s, e) =>
             {
                 // لما تدوس مرتين يرجع التصميم في نص الشاشة بالظبط
@@ -229,8 +241,25 @@ namespace VisualEditor.Designer
         {
             if (_selectedControl == null || sender is not Thumb thumb) return;
 
-            double deltaX = e.Vector.X;
-            double deltaY = e.Vector.Y;
+
+           
+
+            // 💡 السحر هنا: بنجيب نسبة الزووم الحالية
+            double zoomX = MyZoomBorder.ZoomX;
+            double zoomY = MyZoomBorder.ZoomY;
+
+            // 💡 بنقسم حركة الماوس على الزووم عشان الحركة تبقى دقيقة
+            double deltaX = e.Vector.X / zoomX;
+            double deltaY = e.Vector.Y / zoomY;
+
+            // مثال لتغيير الحجم لو سحبنا المربع اللي تحت على اليمين:
+            if (thumb.Name == "BottomRight")
+            {
+                _selectedControl.Width = Math.Max(10, _selectedControl.Bounds.Width + deltaX);
+                _selectedControl.Height = Math.Max(10, _selectedControl.Bounds.Height + deltaY);
+            }
+
+            
 
             double currentWidth = double.IsNaN(_selectedControl.Width) ? _selectedControl.Bounds.Width : _selectedControl.Width;
             double currentHeight = double.IsNaN(_selectedControl.Height) ? _selectedControl.Bounds.Height : _selectedControl.Height;
