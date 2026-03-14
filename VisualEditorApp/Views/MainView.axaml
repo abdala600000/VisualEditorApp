@@ -1,4 +1,4 @@
-<UserControl x:Class="VisualEditorApp.Views.MainView"
+﻿<UserControl x:Class="VisualEditorApp.Views.MainView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -37,7 +37,30 @@
             <Setter Property="(win32:Win32Properties.NonClientHitTestResult)" Value="Client" />
           </Style>
         </Menu.Styles>
-        <MenuItem Header="_File">
+          <MenuItem Header="File">
+                <MenuItem Header="New">
+                    <MenuItem Header="New Project..." Command="{Binding OpenNewProjectCommand}" />
+                    <MenuItem Header="New Solution..." />
+                    <MenuItem Header="New File from Template..." />
+                </MenuItem>
+                <MenuItem Header="Open..." InputGesture="Ctrl+O" />
+                <MenuItem Header="Open Recent" />
+                <Separator Background="#333"/>
+                <MenuItem Header="Save" InputGesture="Ctrl+S" />
+                <MenuItem Header="Save All" InputGesture="Ctrl+Shift+S" />
+                <Separator Background="#333"/>
+                <MenuItem Header="Extensions" />
+                <MenuItem Header="Save Mode" />
+                <Separator Background="#333"/>
+                <MenuItem Header="Exit" InputGesture="Alt+F4" />
+            </MenuItem>
+            <MenuItem Header="Edit" />
+            <MenuItem Header="View" />
+            <MenuItem Header="Debug" />
+            <MenuItem Header="Tools" />
+            <MenuItem Header="Extensions" />
+            <MenuItem Header="Help" />
+       <!-- <MenuItem Header="_File">
           <MenuItem Header="_Open Solution..." Click="OnOpenSolutionClicked" />
           <MenuItem Header="_Close Solution" Command="{Binding CloseSolutionCommand}" />
           <Separator />
@@ -46,7 +69,7 @@
           <Separator />
           <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
         </MenuItem>
-        <MenuItem Header="_Edit" IsEnabled="False" />
+        <MenuItem Header="_Edit" IsEnabled="False" />-->
         <MenuItem Header="_View">
           <MenuItem Header="_Theme">
             <MenuItem Header="_Rider Light"
@@ -57,14 +80,7 @@
                        Command="{Binding SwitchToDarkThemeCommand}" />
           </MenuItem>
         </MenuItem>
-        <MenuItem Header="_Navigate" IsEnabled="False" />
-        <MenuItem Header="_Code" IsEnabled="False" />
-        <MenuItem Header="_Build" IsEnabled="False" />
-        <MenuItem Header="_Run" IsEnabled="False" />
-        <MenuItem Header="_Tools" IsEnabled="False" />
-        <MenuItem Header="_VCS" IsEnabled="False" />
-        <MenuItem Header="_Window" IsEnabled="False" />
-        <MenuItem Header="_Help" IsEnabled="False" />
+      
       </Menu>
     </Grid>
 
@@ -73,7 +89,7 @@
             BorderBrush="{DynamicResource RiderBorderBrush}"
             BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="8,6">
-        <StackPanel Orientation="Horizontal" Spacing="8">
+      <!--  <StackPanel Orientation="Horizontal" Spacing="8">
           <Button x:Name="OpenSolutionButton" ToolTip.Tip="Open Solution" Click="OnOpenSolutionClicked">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <PathIcon Data="{StaticResource IconOpen}" Width="14" Height="14" />
@@ -92,7 +108,29 @@
               <TextBlock Text="Run" />
             </StackPanel>
           </Button>
-        </StackPanel>
+        </StackPanel>-->
+        <StackPanel Orientation="Horizontal" Spacing="5">
+                <Button Content="📄" Background="Transparent" ToolTip.Tip="New File"/>
+                <Button Content="📂" Background="Transparent" ToolTip.Tip="Open Folder"/>
+                <Button Content="💾" Background="Transparent" ToolTip.Tip="Save"/>
+                
+                <TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
+                
+                <Button Content="▶️" Background="Transparent" ToolTip.Tip="Run"/>
+                <Button Content="⏹️" Background="Transparent" ToolTip.Tip="Stop"/>
+                
+                <TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
+                
+                <Button Content="✂️" Background="Transparent" ToolTip.Tip="Cut"/>
+                <Button Content="📋" Background="Transparent" ToolTip.Tip="Copy"/>
+                <Button Content="📋" Background="Transparent" ToolTip.Tip="Paste"/>
+                <Button Content="🗑️" Background="Transparent" ToolTip.Tip="Delete"/>
+                
+                <TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
+                
+                <Button Content="New Project" Command="{Binding OpenNewProjectCommand}" 
+                        Background="#3E3E42" Foreground="White" Padding="10,2" CornerRadius="3"/>
+            </StackPanel>
         <TextBox Grid.Column="4"
                  Width="240"
                  Watermark="Search Everywhere"

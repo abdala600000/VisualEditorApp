@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VisualEditorApp.OpenWorkspaceDialog"
+        xmlns:vm="using:VisualEditorApp.ViewModels"
+       x:DataType="vm:OpenWorkspaceViewModel"
+        Title="Window" Width="400" Height="180"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#1A1A1A" Foreground="White">
+
+    <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+        
+        <TextBlock Grid.Row="0" Text="Open Workspace" FontWeight="Bold" FontSize="18" Margin="0,0,0,15"/>
+        
+        <TextBlock Grid.Row="1" Text="{Binding PromptMessage}" FontSize="14" TextWrapping="Wrap" />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Open" Command="{Binding OpenCommand}" 
+                    Background="#333" Foreground="White" Width="70" HorizontalContentAlignment="Center"/>
+            <Button Content="Open in New Window" Command="{Binding OpenInNewWindowCommand}" 
+                    Background="#333" Foreground="White" Padding="10,5"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}" 
+                    Background="#333" Foreground="White" Width="70" HorizontalContentAlignment="Center"/>
+        </StackPanel>
+        
+    </Grid>
+</Window>

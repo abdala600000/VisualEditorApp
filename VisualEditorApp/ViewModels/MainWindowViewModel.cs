@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -39,6 +39,8 @@ namespace VisualEditorApp.ViewModels
             }
 
             Layout = layout;
+            // 🎯 التسجيل المباشر والنظيف مع الـ Service
+            WorkspaceService.Instance.WorkspaceLoaded += OnWorkspaceLoaded;
         }
 
         public bool IsLightTheme => !IsDarkTheme;
@@ -101,7 +103,12 @@ namespace VisualEditorApp.ViewModels
                 IsDarkTheme = themeVariant == Avalonia.Styling.ThemeVariant.Dark;
             }
         }
-
+        // الدالة اللي هتشتغل أول ما المدير يبلغنا بمسار جديد
+        private void OnWorkspaceLoaded(object sender, string newPath)
+        {
+            // هنا بنادي على دالة قراءة الهارد ديسك بتاعتك
+            LoadSolutionAsync(newPath);
+        }
         public async Task LoadSolutionAsync(string solutionPath)
         {
             StatusText = "Loading solution...";
@@ -139,6 +146,16 @@ namespace VisualEditorApp.ViewModels
             if (Layout is IDock dock && dock.Close.CanExecute(null))
             {
                 dock.Close.Execute(null);
+            }
+        }
+        [RelayCommand]
+        private async void OpenNewProject()
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                // 🎯 فتح البرواز الذكي بدل الشاشات القديمة
+                var wizardWindow = new NewProjectWizardWindow();
+                await wizardWindow.ShowDialog(desktop.MainWindow);
             }
         }
     }

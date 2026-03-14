@@ -18,6 +18,7 @@ namespace VisualEditorApp.ViewModels.Tools
             Title = "Solution Explorer";
             Items = new ObservableCollection<SolutionItemViewModel>();
             OpenDocument = openDocument;
+          
         }
 
         public ObservableCollection<SolutionItemViewModel> Items { get; }

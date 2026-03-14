@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
+using System.Xml;
 using VisualEditor.CodeEditor;
 using VisualEditor.Core;
 using VisualEditor.Core.Messages;
@@ -57,18 +58,18 @@ namespace VisualEditorApp.Views.Documents
         private void TriggerRender()
         {
             // الكود اللي بياخد الـ Text الحالي ويبعته للـ RenderLiveXaml
-           // this.ResultControl = LiveDesignerCompiler.RenderLiveXaml(this.Text, this.FilePath);
+            // this.ResultControl = LiveDesignerCompiler.RenderLiveXaml(this.Text, this.FilePath);
         }
         private void InitializeControls()
         {
-            
-            
+
+
 
             if (MyCodeEditor != null)
             {
                 MyCodeEditor.XamlTextChanged += MyCodeEditor_XamlTextChanged;
             }
-            
+
             if (MyDesignSurface != null)
             {
                 MyDesignSurface.DesignChanged += MyDesignSurface_DesignChanged;
@@ -119,8 +120,8 @@ namespace VisualEditorApp.Views.Documents
 
         private void MyDesignSurface_DesignChanged(object? sender, EventArgs e)
         {
-            
-             
+
+
 
             if (_isUpdating || MyDesignSurface == null || MyCodeEditor == null) return;
             _isUpdating = true;
@@ -142,19 +143,15 @@ namespace VisualEditorApp.Views.Documents
 
         private void MyCodeEditor_XamlTextChanged(object? sender, string newXamlText)
         {
-            
+
 
             if (_isUpdating || MyDesignSurface == null) return;
             _isUpdating = true;
 
             try
             {
-                var newControl = LiveDesignerCompiler.RenderLiveXaml(newXamlText);
-                if (newControl != null)
-                {
-                    MyDesignSurface.LoadDesign(newControl);
-                    WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(newControl));
-                }
+                 SetXamlText(newXamlText, "");
+              
             }
             catch
             {
@@ -167,8 +164,8 @@ namespace VisualEditorApp.Views.Documents
 
         private void MyDesignSurface_SelectionChanged(object? sender, Control? selectedControl)
         {
-             if (selectedControl != null)
-             {
+            if (selectedControl != null)
+            {
                 WeakReferenceMessenger.Default.Send(new ControlSelectedMessage(selectedControl, "Properties"));
             }
         }
@@ -187,8 +184,53 @@ namespace VisualEditorApp.Views.Documents
 
                 if (newControl != null)
                 {
-                    MyDesignSurface.LoadDesign(newControl);
-                    WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(newControl));
+
+                    // 2. استخراج الـ Design DataContext (نحفظه على جنب الأول)
+                    object designContext = null;
+                    if (newControl is Avalonia.Controls.Control originalControl)
+                    {
+                        designContext = Avalonia.Controls.Design.GetDataContext(originalControl);
+                    }
+
+                    Avalonia.Controls.Control finalElementToDisplay = newControl as Avalonia.Controls.Control;
+
+                    // 3. كود استخراج الـ Window والنافذة الوهمية
+                    if (newControl is Avalonia.Controls.Window window)
+                    {
+                        var windowContent = window.Content as Avalonia.Controls.Control;
+                        window.Content = null; // فصل المحتوى
+
+                        var fakeWindow = new Avalonia.Controls.Border
+                        {
+                            Background = window.Background ?? Avalonia.Media.Brushes.White,
+                            Width = double.IsNaN(window.Width) ? 800 : window.Width,
+                            Height = double.IsNaN(window.Height) ? 450 : window.Height,
+                            Child = windowContent,
+                            BoxShadow = Avalonia.Media.BoxShadows.Parse("0 5 15 0 #40000000")
+                        };
+
+                        finalElementToDisplay = fakeWindow; // ده اللي هيتعرض
+                    }
+
+                    // 🎯 4. السحر هنا: نطبق الـ DataContext على العنصر النهائي اللي هيظهر للمستخدم
+                    if (designContext != null && finalElementToDisplay != null)
+                    {
+                        finalElementToDisplay.DataContext = designContext;
+                    }
+
+                    MyDesignSurface.LoadDesign(finalElementToDisplay);
+                        WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
+
+                    
+
+
+
+
+
+
+
+
+
                 }
             }
             catch (Exception ex)
@@ -199,7 +241,7 @@ namespace VisualEditorApp.Views.Documents
 
         private void ZoomComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-           
+
 
             if (ZoomComboBox?.SelectedItem is ComboBoxItem item && item.Content != null)
             {
