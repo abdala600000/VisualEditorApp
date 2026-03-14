@@ -2,8 +2,10 @@
 using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using System;
 
@@ -36,8 +38,14 @@ namespace VisualEditor.Designer
                 {
                     UpdateAdornerPosition();
                 }
+                // إذا تغيرت المصفوفة (Matrix) الخاصة بالتحويل
+                if (e.Property.Name == nameof(MyZoomBorder.Matrix))
+                {
+                    UpdateRulers();
+                }
             };
-
+            // رسم أولي عند تحميل الصفحة
+            this.AttachedToVisualTree += (s, e) => UpdateRulers();
             // 2. تحديث المربع في حالة تغيير حجم الشاشة نفسها
             this.LayoutUpdated += (s, e) => UpdateAdornerPosition();
             MyZoomBorder.DoubleTapped += (s, e) =>
@@ -406,6 +414,106 @@ namespace VisualEditor.Designer
 
                 // 4. استدعاء دالة Zoom كـ Method ونديها الإحداثيات
                 MyZoomBorder.Zoom(relativeZoom, centerX, centerY);
+            }
+        }
+
+
+
+
+        private void UpdateRulers()
+        {
+            var matrix = MyZoomBorder.Matrix;
+            double zoom = matrix.M11;   // معامل الزوم الحالي
+            double offsetX = matrix.M31; // الإزاحة الأفقية (Pan)
+            double offsetY = matrix.M32; // الإزاحة الرأسية (Pan)
+
+            RenderTopRuler(zoom, offsetX);
+            RenderLeftRuler(zoom, offsetY);
+        }
+
+        private void RenderTopRuler(double zoom, double offsetX)
+        {
+            TopRuler.Children.Clear();
+
+            // 📏 تحديد المسافة بين الشرطات الكبيرة بناءً على الزوم
+            // لو زوم كبير نصغر المسافة، لو زوم صغير نكبرها
+            double step = zoom > 0.5 ? 100 : 500;
+            double pixelStep = step * zoom;
+
+            // حساب نقطة البداية المرئية
+            double startValue = Math.Floor(-offsetX / pixelStep) * step;
+            double startPos = (startValue * zoom) + offsetX;
+
+            for (double x = startPos; x < TopRuler.Bounds.Width; x += pixelStep)
+            {
+                double currentValue = Math.Round((x - offsetX) / zoom);
+
+                // 1. رسم الشرطة الرئيسية
+                TopRuler.Children.Add(new Line
+                {
+                    StartPoint = new Point(x, 10),
+                    EndPoint = new Point(x, 25),
+                    Stroke = Brushes.DarkGray,
+                    StrokeThickness = 1
+                });
+
+                // 2. كتابة الرقم
+                var txt = new TextBlock
+                {
+                    Text = currentValue.ToString(),
+                    FontSize = 10,
+                    Foreground = Brushes.Gray
+                };
+                Canvas.SetLeft(txt, x + 3);
+                Canvas.SetTop(txt, 0);
+                TopRuler.Children.Add(txt);
+
+                // 3. رسم شرطات فرعية (Sub-ticks) كل 10 وحدات
+                double subStep = pixelStep / 10;
+                for (int i = 1; i < 10; i++)
+                {
+                    double subX = x + (i * subStep);
+                    if (subX < TopRuler.Bounds.Width)
+                        TopRuler.Children.Add(new Line
+                        {
+                            StartPoint = new Point(subX, 18),
+                            EndPoint = new Point(subX, 25),
+                            Stroke = Brushes.LightGray,
+                            StrokeThickness = 0.5
+                        });
+                }
+            }
+        }
+
+        private void RenderLeftRuler(double zoom, double offset)
+        {
+            LeftRuler.Children.Clear();
+            double interval = 100 * zoom;
+            double startY = offset % interval;
+
+            for (double y = startY; y < LeftRuler.Bounds.Height; y += interval)
+            {
+                double realValue = Math.Round((y - offset) / zoom);
+
+                LeftRuler.Children.Add(new Line
+                {
+                    StartPoint = new Point(15, y),
+                    EndPoint = new Point(25, y),
+                    Stroke = Brushes.Gray,
+                    StrokeThickness = 1
+                });
+
+                var text = new TextBlock
+                {
+                    Text = realValue.ToString(),
+                    FontSize = 9,
+                    Foreground = Brushes.Gray
+                };
+                // تدوير النص ليناسب المسطرة الرأسية
+                text.RenderTransform = new RotateTransform(-90);
+                Canvas.SetLeft(text, 2);
+                Canvas.SetTop(text, y + 15);
+                LeftRuler.Children.Add(text);
             }
         }
     }
