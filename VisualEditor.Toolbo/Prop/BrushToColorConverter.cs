@@ -19,7 +19,7 @@ public class BrushToColorConverter : IValueConverter
         if (value is Color color)
             return color;
 
-        return Colors.Transparent; // ﬁÌ„… «› —«÷Ì…
+        return value;
     }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

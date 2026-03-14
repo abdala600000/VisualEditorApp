@@ -36,20 +36,25 @@
         
         <Border Grid.Row="0" Grid.Column="0" Background="#E0E0E0" BorderBrush="#D0D0D0" BorderThickness="0,0,1,1"/>
 
-       <Canvas Grid.Row="0" Grid.Column="1" Background="#F5F5F5" Name="TopRuler" ClipToBounds="True" >
-            <Border BorderBrush="#D0D0D0" BorderThickness="0,0,0,1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-            <TextBlock Text="0" FontSize="10" Foreground="Gray" Canvas.Left="5" Canvas.Top="5"/>
-            <TextBlock Text="100" FontSize="10" Foreground="Gray" Canvas.Left="105" Canvas.Top="5"/>
-        </Canvas>
+       <Canvas Grid.Row="0" Grid.Column="1" Background="#F5F5F5" Name="TopRulerContainer" ClipToBounds="True">
+    <Canvas Name="TopRuler" />
+  <StackPanel Name="TopTrackerGroup" IsVisible="False">
+        <Line Name="TopTracker" StartPoint="0,0" EndPoint="0,25" Stroke="Red" StrokeThickness="1" />
+        <Border Background="Red" CornerRadius="2" Padding="2,0" Margin="-15,-2,0,0">
+            <TextBlock Name="TopValueText" Text="0" FontSize="8" Foreground="White" />
+        </Border>
+    </StackPanel>
+</Canvas>
 
-        <Canvas Grid.Row="1" Grid.Column="0" Background="#F5F5F5" Name="LeftRuler" ClipToBounds="True">
-            <Border BorderBrush="#D0D0D0" BorderThickness="0,0,1,0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-            <TextBlock Text="100" FontSize="10" Foreground="Gray" Canvas.Top="105" Canvas.Left="2">
-                <TextBlock.RenderTransform>
-                    <RotateTransform Angle="-90"/>
-                </TextBlock.RenderTransform>
-            </TextBlock>
-        </Canvas>
+<Canvas Grid.Row="1" Grid.Column="0" Background="#F5F5F5" Name="LeftRulerContainer" ClipToBounds="True">
+    <Canvas Name="LeftRuler" />
+   <StackPanel Name="LeftTrackerGroup" IsVisible="False" Orientation="Horizontal">
+        <Line Name="LeftTracker" StartPoint="0,0" EndPoint="25,0" Stroke="Red" StrokeThickness="1" />
+        <Border Background="Red" CornerRadius="2" Padding="2,0" Margin="0,-10,0,0" VerticalAlignment="Top">
+            <TextBlock Name="LeftValueText" Text="0" FontSize="8" Foreground="White" />
+        </Border>
+    </StackPanel>
+</Canvas>
 
         <ScrollViewer Grid.Row="1" Grid.Column="1" 
                       HorizontalScrollBarVisibility="Auto" 
@@ -78,6 +83,12 @@
                 </paz:ZoomBorder>
 
                 <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
+                   <Rectangle Name="SelectionBox" 
+               Fill="#332196F3" 
+               Stroke="DodgerBlue" 
+               StrokeThickness="1" 
+               StrokeDashArray="4,2" 
+               IsVisible="False" />
                     <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
                         <Grid>
                             <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-5,-5,0,0" DragDelta="Resize_DragDelta" />

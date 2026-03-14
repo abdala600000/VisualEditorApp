@@ -20,6 +20,11 @@ namespace VisualEditor.Designer
         private bool _hasMoved = false;
         private bool _isPreviewMode = false;
 
+
+        private bool _isSelecting; // هل المستخدم بيشد مربع تحديد؟
+        private Point _selectionStartPoint; // نقطة بداية الضغط
+        private List<Control> _selectedControls = new List<Control>(); // قائمة العناصر المحددة
+
         // 📢 الأحداث (Events) اللي هنكلم بيها البرنامج بره
         public event EventHandler? DesignChanged;
         public event EventHandler<Control?>? SelectionChanged;
@@ -30,6 +35,21 @@ namespace VisualEditor.Designer
         public DesignerSurfaceView()
         {
             InitializeComponent();
+
+            // 1. أول ما المساطر تاخد حجم (Layout Updated) نرسمها
+            TopRulerContainer.SizeChanged += (s, e) => UpdateRulers();
+            LeftRulerContainer.SizeChanged += (s, e) => UpdateRulers();
+
+            // 2. مراقبة الزوم والتحريك (Matrix)
+            MyZoomBorder.PropertyChanged += (s, e) =>
+            {
+                if (e.Property.Name == nameof(MyZoomBorder.Matrix))
+                {
+                    UpdateRulers();
+                }
+            };
+
+
             // 1. ربط المربع الأزرق مع أي حركة سحب أو زووم
             MyZoomBorder.PropertyChanged += (s, e) =>
             {
@@ -38,14 +58,11 @@ namespace VisualEditor.Designer
                 {
                     UpdateAdornerPosition();
                 }
-                // إذا تغيرت المصفوفة (Matrix) الخاصة بالتحويل
-                if (e.Property.Name == nameof(MyZoomBorder.Matrix))
-                {
-                    UpdateRulers();
-                }
+               
             };
-            // رسم أولي عند تحميل الصفحة
-            this.AttachedToVisualTree += (s, e) => UpdateRulers();
+            // 1. الاشتراك في حركة الماوس فوق منطقة الزوم
+            MyZoomBorder.PointerMoved += (s, e) => UpdateTracker(e);
+            MyZoomBorder.PointerExited += (s, e) => HideTrackers();
             // 2. تحديث المربع في حالة تغيير حجم الشاشة نفسها
             this.LayoutUpdated += (s, e) => UpdateAdornerPosition();
             MyZoomBorder.DoubleTapped += (s, e) =>
@@ -176,7 +193,20 @@ namespace VisualEditor.Designer
 
             if (e.Source is Visual sourceVisual && (sourceVisual == AdornerCanvas || AdornerCanvas.IsVisualAncestorOf(sourceVisual)))
                 return;
+            var pos = e.GetPosition(DesignSurface);
+            var hitResult = DesignSurface.InputHitTest(pos);
 
+            // لو ملمسناش عنصر أو لمسنا الـ DesignSurface نفسه (الخلفية)
+            if (hitResult == DesignSurface || hitResult == null)
+            {
+                _isSelecting = true;
+                _selectionStartPoint = pos;
+                SelectionBox.IsVisible = true;
+
+                // مسح التحديد القديم
+                _selectedControls.Clear();
+                HideAdorners();
+            }
             Control? clickedControl = GetSelectableControl(e.Source as Control);
 
             if (clickedControl != null)
@@ -206,25 +236,78 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
         {
+            // 1. تحديث المؤشر الملاحي دايماً (حتى لو مش بنسحب)
+            UpdateRulerTrackers(e);
+            if (_isDraggingControl && _selectedControls.Count > 0)
+            {
+                var currentMousePos = e.GetPosition(DesignSurface);
+                double deltaX = currentMousePos.X - _dragStartMousePosition.X;
+                double deltaY = currentMousePos.Y - _dragStartMousePosition.Y;
+
+                // تطبيق الـ Snap to Grid
+                double snapSize = 10.0;
+                double snappedDeltaX = Math.Round(deltaX / snapSize) * snapSize;
+                double snappedDeltaY = Math.Round(deltaY / snapSize) * snapSize;
+
+                foreach (var control in _selectedControls)
+                {
+                    // نحتاج لتخزين مكان كل عنصر عند بداية السحب في Dictionary مثلاً
+                    // أو نعدل الـ Margin/Canvas.SetLeft بناءً على مكانه الحالي
+                    if (control.Parent is Canvas)
+                    {
+                        double oldX = Canvas.GetLeft(control);
+                        double oldY = Canvas.GetTop(control);
+                        // تحريك بالنسبة لمكانه الأصلي
+                    }
+                }
+            }
             if (_isDraggingControl && _selectedControl != null)
             {
+                if (_isSelecting)
+                {
+                    var currentPos = e.GetPosition(DesignSurface);
+
+                    // حساب أبعاد المربع (دعم السحب في كل الاتجاهات)
+                    double x = Math.Min(_selectionStartPoint.X, currentPos.X);
+                    double y = Math.Min(_selectionStartPoint.Y, currentPos.Y);
+                    double width = Math.Abs(_selectionStartPoint.X - currentPos.X);
+                    double height = Math.Abs(_selectionStartPoint.Y - currentPos.Y);
+
+                    Canvas.SetLeft(SelectionBox, x);
+                    Canvas.SetTop(SelectionBox, y);
+                    SelectionBox.Width = width;
+                    SelectionBox.Height = height;
+                }
+
+
                 var currentMousePos = e.GetPosition(DesignSurface);
                 double deltaX = currentMousePos.X - _dragStartMousePosition.X;
                 double deltaY = currentMousePos.Y - _dragStartMousePosition.Y;
 
                 if (Math.Abs(deltaX) > 1 || Math.Abs(deltaY) > 1) _hasMoved = true;
 
+                // 🎯 2. ميزة المغناطيس (Snap to Grid)
+                // بنخلي العنصر "ينط" كل 10 بيكسل مثلاً عشان يمشي مع خطوط الشبكة بالظبط
+                double snapSize = 10.0;
+                double rawX = _dragStartControlPosition.X + deltaX;
+                double rawY = _dragStartControlPosition.Y + deltaY;
+
+                double snappedX = Math.Round(rawX / snapSize) * snapSize;
+                double snappedY = Math.Round(rawY / snapSize) * snapSize;
+
+                // 3. تطبيق الحركة
                 if (_selectedControl.Parent is Canvas)
                 {
-                    Canvas.SetLeft(_selectedControl, _dragStartControlPosition.X + deltaX);
-                    Canvas.SetTop(_selectedControl, _dragStartControlPosition.Y + deltaY);
+                    Canvas.SetLeft(_selectedControl, snappedX);
+                    Canvas.SetTop(_selectedControl, snappedY);
                 }
                 else
                 {
-                    _selectedControl.Margin = new Avalonia.Thickness(_dragStartControlPosition.X + deltaX, _dragStartControlPosition.Y + deltaY, 0, 0);
+                    _selectedControl.Margin = new Avalonia.Thickness(snappedX, snappedY, 0, 0);
                     _selectedControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
                     _selectedControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
                 }
+
                 UpdateAdornerPosition();
                 e.Handled = true;
             }
@@ -232,6 +315,64 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerReleased(object? sender, PointerReleasedEventArgs e)
         {
+
+
+            if (_isSelecting)
+            {
+                _isSelecting = false;
+                SelectionBox.IsVisible = false;
+
+                var selectionRect = new Rect(Canvas.GetLeft(SelectionBox), Canvas.GetTop(SelectionBox), SelectionBox.Width, SelectionBox.Height);
+
+                // 🎯 الحركة الصح هنا:
+                // بنشوف مين هو المحتوى (الـ Page اللي اتحملت) وبنحاول نعاملها كـ Panel (عشان نوصل للـ Children)
+                if (DesignSurface.Content is Panel mainPanel)
+                {
+                    foreach (var child in mainPanel.Children.OfType<Control>())
+                    {
+                        // تحويل حدود العنصر بالنسبة للـ DesignSurface عشان نعرف نقارنها بالمربع الأزرق
+                        var transform = child.TranslatePoint(new Point(0, 0), DesignSurface);
+                        if (transform.HasValue)
+                        {
+                            var childRect = new Rect(transform.Value.X, transform.Value.Y, child.Bounds.Width, child.Bounds.Height);
+
+                            if (selectionRect.Intersects(childRect))
+                            {
+                                _selectedControls.Add(child);
+                            }
+                        }
+                    }
+                }
+
+                // لو في عناصر اتحددت، نظهر الـ Adorner (لو حابب)
+                if (_selectedControls.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✅ تم تحديد {_selectedControls.Count} عناصر");
+                    // هنا ممكن تنده دالة لتحديد "البرواز الكبير" للمجموعة
+                }
+            }
+            //if (_isSelecting)
+            //{
+            //    _isSelecting = false;
+            //    SelectionBox.IsVisible = false;
+
+            //    // المستطيل النهائي للتحديد
+            //    var selectionRect = new Rect(Canvas.GetLeft(SelectionBox), Canvas.GetTop(SelectionBox), SelectionBox.Width, SelectionBox.Height);
+
+            //    // فحص كل العناصر في الـ Canvas
+            //    foreach (var child in DesignSurface.Children.OfType<Control>())
+            //    {
+            //        // الحصول على حدود العنصر بالنسبة للـ DesignSurface
+            //        var bounds = child.Bounds;
+            //        if (selectionRect.Intersects(bounds))
+            //        {
+            //            _selectedControls.Add(child);
+            //            // إظهار حدود تمييز لكل عنصر (اختياري)
+            //        }
+            //    }
+
+            //    System.Diagnostics.Debug.WriteLine($"Selected {_selectedControls.Count} items.");
+            //}
             if (_isDraggingControl)
             {
                 _isDraggingControl = false;
@@ -418,102 +559,173 @@ namespace VisualEditor.Designer
         }
 
 
-
-
         private void UpdateRulers()
         {
-            var matrix = MyZoomBorder.Matrix;
-            double zoom = matrix.M11;   // معامل الزوم الحالي
-            double offsetX = matrix.M31; // الإزاحة الأفقية (Pan)
-            double offsetY = matrix.M32; // الإزاحة الرأسية (Pan)
+            if (TopRulerContainer.Bounds.Width == 0 || LeftRulerContainer.Bounds.Height == 0) return;
 
-            RenderTopRuler(zoom, offsetX);
-            RenderLeftRuler(zoom, offsetY);
+            // الحصول على المصفوفة ومعكوسها
+            var matrix = MyZoomBorder.Matrix;
+            var zoom = matrix.M11;
+
+            // 🎯 الحركة الذكية: بنعرف النقطة (0,0) بتاعة المسطرة بتقابل كام في التصميم
+            // بنقسم الـ Offset على الزوم وبنعكس الإشارة
+            double startContentX = -matrix.M31 / zoom;
+            double startContentY = -matrix.M32 / zoom;
+
+            RenderTopRuler(zoom, startContentX, matrix.M31);
+           RenderLeftRuler(zoom, startContentY, matrix.M32);
         }
 
-        private void RenderTopRuler(double zoom, double offsetX)
+        private void RenderTopRuler(double zoom, double startValue, double offsetX)
         {
             TopRuler.Children.Clear();
 
-            // 📏 تحديد المسافة بين الشرطات الكبيرة بناءً على الزوم
-            // لو زوم كبير نصغر المسافة، لو زوم صغير نكبرها
-            double step = zoom > 0.5 ? 100 : 500;
+            // تحديد المسافة بين الشرطات (مثلاً كل 100 وحدة)
+            double step = 100;
+            if (zoom < 0.5) step = 500;
+            else if (zoom > 2) step = 50;
+
             double pixelStep = step * zoom;
 
-            // حساب نقطة البداية المرئية
-            double startValue = Math.Floor(-offsetX / pixelStep) * step;
-            double startPos = (startValue * zoom) + offsetX;
+            // حساب أول نقطة "مضاعفة للـ step" قبل بداية الشاشة مباشرة
+            double firstVisibleValue = Math.Floor(startValue / step) * step;
 
-            for (double x = startPos; x < TopRuler.Bounds.Width; x += pixelStep)
+            // تحويل القيمة الحقيقية لمكان على الشاشة (Pixel Position)
+            double firstPixelPos = (firstVisibleValue * zoom) + offsetX;
+
+            for (double x = firstPixelPos; x < TopRulerContainer.Bounds.Width; x += pixelStep)
             {
-                double currentValue = Math.Round((x - offsetX) / zoom);
+                // القيمة اللي هتتكتب (0, 100, 200...)
+                double val = Math.Round(firstVisibleValue + ((x - firstPixelPos) / pixelStep) * step);
 
-                // 1. رسم الشرطة الرئيسية
+                // رسم الشرطة
                 TopRuler.Children.Add(new Line
                 {
-                    StartPoint = new Point(x, 10),
+                    StartPoint = new Point(x, 12),
                     EndPoint = new Point(x, 25),
-                    Stroke = Brushes.DarkGray,
+                    Stroke = Brushes.DimGray,
                     StrokeThickness = 1
                 });
 
-                // 2. كتابة الرقم
+                // رسم الرقم
                 var txt = new TextBlock
                 {
-                    Text = currentValue.ToString(),
-                    FontSize = 10,
-                    Foreground = Brushes.Gray
+                    Text = val.ToString(),
+                    FontSize = 9,
+                    Foreground = Brushes.DimGray
                 };
                 Canvas.SetLeft(txt, x + 3);
                 Canvas.SetTop(txt, 0);
                 TopRuler.Children.Add(txt);
-
-                // 3. رسم شرطات فرعية (Sub-ticks) كل 10 وحدات
-                double subStep = pixelStep / 10;
-                for (int i = 1; i < 10; i++)
-                {
-                    double subX = x + (i * subStep);
-                    if (subX < TopRuler.Bounds.Width)
-                        TopRuler.Children.Add(new Line
-                        {
-                            StartPoint = new Point(subX, 18),
-                            EndPoint = new Point(subX, 25),
-                            Stroke = Brushes.LightGray,
-                            StrokeThickness = 0.5
-                        });
-                }
             }
         }
 
-        private void RenderLeftRuler(double zoom, double offset)
+        private void RenderLeftRuler(double zoom, double startValue, double offsetY)
         {
             LeftRuler.Children.Clear();
-            double interval = 100 * zoom;
-            double startY = offset % interval;
 
-            for (double y = startY; y < LeftRuler.Bounds.Height; y += interval)
+            // نفس الخطوات البرمجية بناءً على الزوم
+            double step = 100;
+            if (zoom < 0.5) step = 500;
+            else if (zoom > 2) step = 50;
+
+            double pixelStep = step * zoom;
+
+            // حساب أول نقطة مرئية رأسياً
+            double firstVisibleValue = Math.Floor(startValue / step) * step;
+            double firstPixelPos = (firstVisibleValue * zoom) + offsetY;
+
+            for (double y = firstPixelPos; y < LeftRulerContainer.Bounds.Height; y += pixelStep)
             {
-                double realValue = Math.Round((y - offset) / zoom);
+                double val = Math.Round(firstVisibleValue + ((y - firstPixelPos) / pixelStep) * step);
 
+                // 1. رسم الشرطة العرضية
                 LeftRuler.Children.Add(new Line
                 {
-                    StartPoint = new Point(15, y),
+                    StartPoint = new Point(12, y),
                     EndPoint = new Point(25, y),
-                    Stroke = Brushes.Gray,
+                    Stroke = Brushes.DimGray,
                     StrokeThickness = 1
                 });
 
-                var text = new TextBlock
+                // 2. رسم الرقم مع تدويره -90 درجة
+                var txt = new TextBlock
                 {
-                    Text = realValue.ToString(),
+                    Text = val.ToString(),
                     FontSize = 9,
-                    Foreground = Brushes.Gray
+                    Foreground = Brushes.DimGray,
+                    // تدوير النص ليكون موازياً للمسطرة
+                    RenderTransform = new RotateTransform(-90),
+                    RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Relative)
                 };
-                // تدوير النص ليناسب المسطرة الرأسية
-                text.RenderTransform = new RotateTransform(-90);
-                Canvas.SetLeft(text, 2);
-                Canvas.SetTop(text, y + 15);
-                LeftRuler.Children.Add(text);
+
+                Canvas.SetLeft(txt, 2); // ترك مسافة بسيطة من الحافة
+                Canvas.SetTop(txt, y + 15); // إزاحة بسيطة لتحسين المظهر
+                LeftRuler.Children.Add(txt);
+            }
+        }
+
+        private void UpdateTracker(Avalonia.Input.PointerEventArgs e)
+        {
+            // الحصول على مكان الماوس بالنسبة للـ ZoomBorder (الشاشة)
+            var point = e.GetPosition(MyZoomBorder);
+
+            // إظهار المؤشرات
+            TopTracker.IsVisible = true;
+            LeftTracker.IsVisible = true;
+
+            // 🎯 تحريك مؤشر المسطرة العلوية
+            // بما أن الـ TopRuler والـ ZoomBorder في نفس الـ Column، فالـ X متطابق
+            Canvas.SetLeft(TopTracker, point.X);
+
+            // 🎯 تحريك مؤشر المسطرة الجانبية
+            // بما أن الـ LeftRuler والـ ZoomBorder في نفس الـ Row، فالـ Y متطابق
+            Canvas.SetTop(LeftTracker, point.Y);
+        }
+
+        private void HideTrackers()
+        {
+            TopTracker.IsVisible = false;
+            LeftTracker.IsVisible = false;
+        }
+        // دالة مساعدة لتحديث الخطوط الحمراء على المسطرة
+        private void UpdateRulerTrackers(PointerEventArgs e)
+        {
+            var screenPos = e.GetPosition(MyZoomBorder);
+            var matrix = MyZoomBorder.Matrix;
+            double zoom = matrix.M11;
+
+            if (TopTrackerGroup != null && LeftTrackerGroup != null)
+            {
+                TopTrackerGroup.IsVisible = true;
+                LeftTrackerGroup.IsVisible = true;
+
+                // 🎯 حساب الإحداثيات الحقيقية (Design Space)
+                double realX = Math.Round((screenPos.X - matrix.M31) / zoom);
+                double realY = Math.Round((screenPos.Y - matrix.M32) / zoom);
+
+                // تحديث النصوص
+                TopValueText.Text = realX.ToString();
+                LeftValueText.Text = realY.ToString();
+
+                // تحريك المجموعات (StackPanels)
+                Canvas.SetLeft(TopTrackerGroup, screenPos.X);
+                Canvas.SetTop(LeftTrackerGroup, screenPos.Y);
+            }
+        }
+        private void HideAdorners()
+        {
+            // 1. إخفاء المربع الأزرق اللي فيه الـ Thumbs (TopLeft, BottomRight, etc.)
+            if (SelectionAdorner != null)
+            {
+                SelectionAdorner.IsVisible = false;
+            }
+
+            // 2. اختياري: لو عامل تمييز (Highlight) للعناصر المختارة، بنشيله هنا
+            // مثلاً لو كنت بتغير الـ BorderBrush بتاع العناصر المحددة
+            foreach (var control in _selectedControls)
+            {
+                // نرجع الشكل الطبيعي للعنصر
             }
         }
     }

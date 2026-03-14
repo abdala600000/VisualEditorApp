@@ -169,8 +169,8 @@ namespace VisualEditorApp.Views.Documents
         {
              if (selectedControl != null)
              {
-                 // Logic for selection if needed
-             }
+                WeakReferenceMessenger.Default.Send(new ControlSelectedMessage(selectedControl, "Properties"));
+            }
         }
 
         // 👈 ضفنا filePath هنا

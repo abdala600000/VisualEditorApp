@@ -17,7 +17,7 @@
                 <Button x:Name="BtnXaml" Content="XAML" Tag="XAML" Click="BtnViewMode_Click" Background="Transparent" Padding="10,2" />
             </StackPanel>
             <Rectangle Width="1" Fill="{DynamicResource RiderBorderBrush}" Margin="0,2" />
-            <ComboBox x:Name="ZoomComboBox" SelectedIndex="3" Padding="10,2" MinHeight="25">
+            <ComboBox x:Name="ZoomComboBox" SelectedIndex="3" Padding="10,2" MinHeight="25" SelectionChanged="ZoomComboBox_SelectionChanged">
                 <ComboBoxItem>25%</ComboBoxItem>
                 <ComboBoxItem>50%</ComboBoxItem>
                 <ComboBoxItem>100%</ComboBoxItem>

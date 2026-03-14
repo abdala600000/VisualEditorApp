@@ -9,8 +9,7 @@ namespace VisualEditorApp.ViewModels.Tools
     {
         [ObservableProperty] private string _summary = "No structure information available.";
 
-        public DocumentOutlineViewModel Outline => DocumentOutlineViewModel.Instance;
-
+       
         public StructureToolViewModel()
         {
             Id = "Structure";
