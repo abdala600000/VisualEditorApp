@@ -1,4 +1,5 @@
 ﻿using System;
+using VisualEditorApp.Models;
 
 namespace VisualEditorApp.Services
 {
@@ -24,5 +25,25 @@ namespace VisualEditorApp.Services
             // بنبلغ أي حد مهتم (زي السوليوشن اكسبلورر) إن في مشروع جديد اتفتح
             WorkspaceLoaded?.Invoke(this, path);
         }
+
+        
+        public void SetCurrentStartupProject(SolutionItemViewModel newStartup)
+        {
+            // 1. لو في مشروع كان Startup قبل كده، بنطفيه (IsStartupProject = false)
+            if (_currentStartup != null)
+            {
+                _currentStartup.IsStartupProject = false;
+            }
+
+            // 2. بنفعل المشروع الجديد
+            _currentStartup = newStartup;
+            _currentStartup.IsStartupProject = true;
+
+            // 3. (اختياري) لو عاوز تبلغ أجزاء تانية في البرنامج
+            StartupProjectChanged?.Invoke(this, newStartup);
+        }
+
+        private SolutionItemViewModel? _currentStartup;
+        public event EventHandler<SolutionItemViewModel>? StartupProjectChanged;
     }
 }

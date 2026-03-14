@@ -17,6 +17,8 @@ namespace VisualEditorApp.Models
         [ObservableProperty] private bool _isExpanded;
         [ObservableProperty] private bool _isSelected;
 
+        [ObservableProperty] private bool _isStartupProject;
+
         public SolutionItemViewModel(SolutionItemKind kind, string name, string? path)
         {
             Kind = kind;
@@ -134,6 +136,8 @@ namespace VisualEditorApp.Models
 
             try
             {
+                // 🎯 السطر الجديد: بنبلغ الخدمة المركزية بالمشروع الجديد
+                Services.WorkspaceService.Instance.SetCurrentStartupProject(this);
                 // 1. تحديد مكان مجلد الـ bin للمشروع المختار
                 string projDir = System.IO.Path.GetDirectoryName(Path);
                 string binPath = System.IO.Path.Combine(projDir, "bin");
@@ -156,6 +160,7 @@ namespace VisualEditorApp.Models
 
                         // 4. 🚀 تحديث المحرك فوراً عشان يحمل الـ DLLs الجديدة
                         LiveDesignerCompiler.UpdateStartupPath(latestBin.FullName);
+                       
 
                         System.Diagnostics.Debug.WriteLine($"✅ Startup Project set to: {Name}");
                     }
