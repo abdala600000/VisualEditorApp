@@ -12,21 +12,23 @@
 
 	<UserControl.Resources>
 		<tools:SolutionItemKindToIconConverter x:Key="SolutionItemIconConverter" />
+			<StreamGeometry x:Key="IconRun">M5 4L12 8L5 12V4Z</StreamGeometry>
 	</UserControl.Resources>
 
 	<UserControl.Styles>
 		<Style Selector="PathIcon.startup">
 			<Setter Property="Foreground" Value="#4CAF50" />
-	</Style>
+			<Setter Property="Data" Value="{StaticResource IconRun}"/>
+		</Style>
 		<Style Selector="TextBlock.startupText">
 			<Setter Property="Foreground" Value="#4CAF50" />
 			<Setter Property="FontWeight" Value="Bold" />
 		</Style>
-		 <Style Selector="ProgressBar">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="MinHeight" Value="2" />
-    </Style>
+		<Style Selector="ProgressBar">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="MinHeight" Value="2" />
+		</Style>
 	</UserControl.Styles>
 
 	<Border Background="{DynamicResource RiderPanelBrush}">
@@ -67,13 +69,13 @@
 
 						<TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
 						<ProgressBar IsVisible="{Binding IsBuilding}"
-                     IsIndeterminate="True"
-                     Width="40"
-                     Height="2"
-                     VerticalAlignment="Center"
-                     Margin="5,0,0,0"
-                     Foreground="#4CAF50" />
-								   
+									 IsIndeterminate="True"
+									 Width="40"
+									 Height="2"
+									 VerticalAlignment="Center"
+									 Margin="5,0,0,0"
+									 Foreground="#4CAF50" />
+
 
 					</StackPanel>
 

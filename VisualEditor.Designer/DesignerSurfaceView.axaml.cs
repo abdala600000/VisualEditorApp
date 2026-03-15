@@ -20,6 +20,8 @@ namespace VisualEditor.Designer
         // الكنترولات
         private Control? _selectedControl;
         private List<Control> _selectedControls = new List<Control>();
+        // قاموس بيسجل: كل عنصر كان فين بالظبط قبل ما نبدأ نشد بالماوس
+        private Dictionary<Control, Point> _groupStartPositions = new Dictionary<Control, Point>();
 
         // حالات السحب والحركة
         private bool _isDraggingControl = false;
@@ -143,33 +145,41 @@ namespace VisualEditor.Designer
         {
             if (_isPreviewMode || !e.GetCurrentPoint(DesignSurface).Properties.IsLeftButtonPressed) return;
 
-            // تجاهل الضغط لو كان على الـ Adorner (عشان ندوّر أو نكبر)
-            if (e.Source is Visual v && (v == AdornerCanvas || AdornerCanvas.IsVisualAncestorOf(v))) return;
-
             var pos = e.GetPosition(DesignSurface);
-            var hitResult = DesignSurface.InputHitTest(pos);
             Control? clickedControl = GetSelectableControl(e.Source as Control);
 
             if (clickedControl != null)
             {
-                // حالة سحب كنترول
-                SelectControl(clickedControl);
+                // 🎯 لو العنصر اللي ضغطنا عليه مش موجود في المجموعة الحالية، بنمسح المجموعة ونحدده هو بس
+                if (!_selectedControls.Contains(clickedControl))
+                {
+                    _selectedControls.Clear();
+                    _selectedControls.Add(clickedControl);
+                    SelectControl(clickedControl); // لتحديث المربع الأزرق (Adorner) للفردي
+                }
+
                 _isDraggingControl = true;
                 _hasMoved = false;
                 _dragStartMousePosition = pos;
 
-                _dragStartControlPosition = clickedControl.Parent is Canvas
-                    ? new Point(Canvas.GetLeft(clickedControl).DefaultIfNaN(), Canvas.GetTop(clickedControl).DefaultIfNaN())
-                    : new Point(clickedControl.Margin.Left, clickedControl.Margin.Top);
+                // 🎯 تخزين الأماكن الابتدائية لكل المجموعة
+                _groupStartPositions.Clear();
+                foreach (var ctrl in _selectedControls)
+                {
+                    _groupStartPositions[ctrl] = ctrl.Parent is Canvas
+                        ? new Point(Canvas.GetLeft(ctrl).DefaultIfNaN(), Canvas.GetTop(ctrl).DefaultIfNaN())
+                        : new Point(ctrl.Margin.Left, ctrl.Margin.Top);
+                }
 
                 e.Handled = true;
             }
             else
             {
-                // حالة الضغط على الخلفية (بداية مربع التحديد)
+                // الضغط في الفراغ يبدأ مربع التحديد الأزرق
                 _isSelecting = true;
                 _selectionStartPoint = pos;
                 SelectionBox.IsVisible = true;
+                _selectedControls.Clear();
                 ClearSelection();
             }
         }
@@ -180,36 +190,39 @@ namespace VisualEditor.Designer
 
             if (_isSelecting)
             {
-                // تحديث مربع التحديد الأزرق
-                double x = Math.Min(_selectionStartPoint.X, currentPos.X);
-                double y = Math.Min(_selectionStartPoint.Y, currentPos.Y);
-                SelectionBox.Width = Math.Abs(_selectionStartPoint.X - currentPos.X);
-                SelectionBox.Height = Math.Abs(_selectionStartPoint.Y - currentPos.Y);
-                Canvas.SetLeft(SelectionBox, x);
-                Canvas.SetTop(SelectionBox, y);
+                // (كود رسم مربع التحديد الأزرق زي ما هو...)
+                UpdateSelectionBox(currentPos);
             }
-            else if (_isDraggingControl && _selectedControl != null)
+            else if (_isDraggingControl && _selectedControls.Count > 0)
             {
-                // منطق السحب مع الـ Snap to Grid
                 double deltaX = currentPos.X - _dragStartMousePosition.X;
                 double deltaY = currentPos.Y - _dragStartMousePosition.Y;
+
                 if (Math.Abs(deltaX) > 1 || Math.Abs(deltaY) > 1) _hasMoved = true;
 
                 double snapSize = 10.0;
-                double snappedX = Math.Round((_dragStartControlPosition.X + deltaX) / snapSize) * snapSize;
-                double snappedY = Math.Round((_dragStartControlPosition.Y + deltaY) / snapSize) * snapSize;
 
-                if (_selectedControl.Parent is Canvas)
+                // 🎯 تحريك كل عنصر في المجموعة بناءً على مكانه الأصلي + فرق حركة الماوس
+                foreach (var ctrl in _selectedControls)
                 {
-                    Canvas.SetLeft(_selectedControl, snappedX);
-                    Canvas.SetTop(_selectedControl, snappedY);
+                    if (!_groupStartPositions.ContainsKey(ctrl)) continue;
+
+                    Point startPos = _groupStartPositions[ctrl];
+                    double snappedX = Math.Round((startPos.X + deltaX) / snapSize) * snapSize;
+                    double snappedY = Math.Round((startPos.Y + deltaY) / snapSize) * snapSize;
+
+                    if (ctrl.Parent is Canvas)
+                    {
+                        Canvas.SetLeft(ctrl, snappedX);
+                        Canvas.SetTop(ctrl, snappedY);
+                    }
+                    else
+                    {
+                        ctrl.Margin = new Thickness(snappedX, snappedY, 0, 0);
+                    }
                 }
-                else
-                {
-                    _selectedControl.Margin = new Thickness(snappedX, snappedY, 0, 0);
-                    _selectedControl.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
-                    _selectedControl.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
-                }
+
+                // تحديث الـ Adorner لو فيه عنصر واحد بس هو الـ Main
                 UpdateAdornerPosition();
             }
         }
@@ -247,6 +260,31 @@ namespace VisualEditor.Designer
                     }
                 }
             }
+        }
+
+        private void UpdateSelectionBox(Point currentPos)
+        {
+            if (SelectionBox == null) return;
+
+            // 🎯 الحسبة دي بتخلي المربع يترسم صح حتى لو سحبت الماوس عكس اتجاه البداية
+            // Math.Min عشان نضمن إن الـ X والـ Y دايماً بيمثلوا الركن العلوي الأيسر
+            double x = Math.Min(_selectionStartPoint.X, currentPos.X);
+            double y = Math.Min(_selectionStartPoint.Y, currentPos.Y);
+
+            // Math.Abs عشان الطول والعرض دايماً يطلعوا قيمة موجبة (Absolute)
+            double width = Math.Abs(_selectionStartPoint.X - currentPos.X);
+            double height = Math.Abs(_selectionStartPoint.Y - currentPos.Y);
+
+            // تحديث مكان المربع على الكانفاس (البرواز الأزرق اللي بيتحرك مع الماوس)
+            Canvas.SetLeft(SelectionBox, x);
+            Canvas.SetTop(SelectionBox, y);
+
+            // تحديث أبعاد المربع
+            SelectionBox.Width = width;
+            SelectionBox.Height = height;
+
+            // التأكد من ظهوره
+            SelectionBox.IsVisible = true;
         }
 
         #endregion
@@ -301,9 +339,19 @@ namespace VisualEditor.Designer
         #region 6. الأوامر العامة (API & Drop)
 
         public void LoadDesign(Control rootControl) { DesignSurface.Content = rootControl; ClearSelection(); }
-
         private void DesignerSurfaceView_KeyDown(object? sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Delete || e.Key == Key.Back)
+            {
+                // مسح كل العناصر المحددة من الواجهة
+                foreach (var ctrl in _selectedControls.ToList())
+                {
+                    if (ctrl.Parent is Panel p) p.Children.Remove(ctrl);
+                    else if (ctrl.Parent is ContentControl cc) cc.Content = null;
+                }
+                ClearSelection();
+                DesignChanged?.Invoke(this, EventArgs.Empty);
+            }
             switch (e.Key)
             {
                 case Key.R: MyZoomBorder.ResetMatrix(); break;
@@ -311,6 +359,7 @@ namespace VisualEditor.Designer
                 case Key.T: MyZoomBorder.AutoFit(); break;
             }
         }
+       
 
         private void DesignSurface_Drop(object? sender, DragEventArgs e)
         {

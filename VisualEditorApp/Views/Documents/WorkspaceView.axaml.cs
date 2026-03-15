@@ -131,8 +131,8 @@ namespace VisualEditorApp.Views.Documents
                 var rootControl = MyDesignSurface.RootDesign;
                 if (rootControl != null)
                 {
-                    string generatedXaml = XamlGenerator.GenerateXaml(rootControl);
-                    MyCodeEditor.SetXamlText(generatedXaml);
+                    //string generatedXaml = XamlGenerator.GenerateXaml(rootControl);
+                    //MyCodeEditor.SetXamlText(generatedXaml);
                 }
             }
             finally
@@ -150,7 +150,7 @@ namespace VisualEditorApp.Views.Documents
 
             try
             {
-                 SetXamlText(newXamlText, "");
+               //  SetXamlText(newXamlText, "");
               
             }
             catch
@@ -221,16 +221,7 @@ namespace VisualEditorApp.Views.Documents
                     MyDesignSurface.LoadDesign(finalElementToDisplay);
                         WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
 
-                    
-
-
-
-
-
-
-
-
-
+                   
                 }
             }
             catch (Exception ex)
