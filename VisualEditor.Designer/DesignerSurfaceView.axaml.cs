@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using VisualEditor.Designer.Services;
 
 namespace VisualEditor.Designer
 {
@@ -41,6 +42,11 @@ namespace VisualEditor.Designer
         // خصائص الوصول
         public Control? RootDesign => DesignSurface.Content as Control;
 
+        private Control? _internalClipboard; // الحافظة الداخلية للبرنامج
+
+        // 🎯 خطوط المحاذاة الذكية
+        private Line _snapLineX = new Line { Stroke = Brushes.DeepSkyBlue, StrokeThickness = 1, StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 4 }, IsVisible = false };
+        private Line _snapLineY = new Line { Stroke = Brushes.DeepSkyBlue, StrokeThickness = 1, StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 4 }, IsVisible = false };
         #endregion
 
         #region 2. البداية والتعريف (Constructor)
@@ -49,6 +55,12 @@ namespace VisualEditor.Designer
         {
             InitializeComponent();
             SetupDesignerEvents();
+            CreateContextMenu(); // 👈 ضيف السطر ده هنا
+
+
+            // إضافة خطوط المحاذاة لطبقة الرسم العلوية
+            AdornerCanvas.Children.Add(_snapLineX);
+            AdornerCanvas.Children.Add(_snapLineY);
         }
 
         private void SetupDesignerEvents()
@@ -143,6 +155,18 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerPressed(object? sender, PointerPressedEventArgs e)
         {
+            var props = e.GetCurrentPoint(DesignSurface).Properties;
+
+            // لو ضغط كليك يمين
+            if (props.IsRightButtonPressed)
+            {
+                Control? clicked = GetSelectableControl(e.Source as Control);
+                if (clicked != null) SelectControl(clicked); // حدد العنصر الأول
+                return; // سيب الـ ContextMenu يفتح لوحده
+            }
+
+
+
             if (_isPreviewMode || !e.GetCurrentPoint(DesignSurface).Properties.IsLeftButtonPressed) return;
 
             var pos = e.GetPosition(DesignSurface);
@@ -239,10 +263,51 @@ namespace VisualEditor.Designer
             if (_isDraggingControl)
             {
                 _isDraggingControl = false;
+                if (_hasMoved)
+                {
+                    // 🎯 أخذ "لقطة" للأماكن الجديدة
+                    var oldPositions = new Dictionary<Control, Point>(_groupStartPositions);
+                    var newPositions = new Dictionary<Control, Point>();
+
+                    foreach (var ctrl in _selectedControls)
+                    {
+                        newPositions[ctrl] = ctrl.Parent is Canvas
+                            ? new Point(Canvas.GetLeft(ctrl).DefaultIfNaN(), Canvas.GetTop(ctrl).DefaultIfNaN())
+                            : new Point(ctrl.Margin.Left, ctrl.Margin.Top);
+                    }
+
+                    // 🎯 تسجيل العملية
+                    HistoryService.Instance.RegisterChange(
+                        undo: () => RestorePositions(oldPositions),
+                        redo: () => RestorePositions(newPositions)
+                    );
+
+                    DesignChanged?.Invoke(this, EventArgs.Empty);
+                }
                 if (_hasMoved) DesignChanged?.Invoke(this, EventArgs.Empty);
             }
         }
+        // دالة مساعدة لتطبيق الأماكن (عشان الـ Undo/Redo يستخدموها)
+        private void RestorePositions(Dictionary<Control, Point> positions)
+        {
+            foreach (var kvp in positions)
+            {
+                var ctrl = kvp.Key;
+                var pos = kvp.Value;
 
+                if (ctrl.Parent is Canvas)
+                {
+                    Canvas.SetLeft(ctrl, pos.X);
+                    Canvas.SetTop(ctrl, pos.Y);
+                }
+                else
+                {
+                    ctrl.Margin = new Thickness(pos.X, pos.Y, 0, 0);
+                }
+            }
+            UpdateAdornerPosition();
+            DesignChanged?.Invoke(this, EventArgs.Empty);
+        }
         private void ProcessMultiSelection()
         {
             var selectionRect = new Rect(Canvas.GetLeft(SelectionBox), Canvas.GetTop(SelectionBox), SelectionBox.Width, SelectionBox.Height);
@@ -352,39 +417,27 @@ namespace VisualEditor.Designer
                 ClearSelection();
                 DesignChanged?.Invoke(this, EventArgs.Empty);
             }
+            if (e.KeyModifiers == KeyModifiers.Control)
+            {
+                if (e.Key == Key.C) CopySelected();
+                if (e.Key == Key.V) PasteSelected();
+                if (e.Key == Key.D) DuplicateSelected();
+
+                // 🎯 التراجع والإعادة
+                if (e.Key == Key.Z) HistoryService.Instance.Undo();
+                if (e.Key == Key.Y) HistoryService.Instance.Redo();
+            }
             switch (e.Key)
             {
                 case Key.R: MyZoomBorder.ResetMatrix(); break;
                 case Key.F: MyZoomBorder.Fill(); break;
                 case Key.T: MyZoomBorder.AutoFit(); break;
+
             }
         }
        
 
-        private void DesignSurface_Drop(object? sender, DragEventArgs e)
-        {
-            if (e.Data.Contains("ControlType"))
-            {
-                string typeName = e.Data.Get("ControlType")?.ToString() ?? "";
-                Type? t = Type.GetType(typeName);
-                if (t != null && typeof(Control).IsAssignableFrom(t))
-                {
-                    var newCtrl = (Control)Activator.CreateInstance(t)!;
-                    newCtrl.Width = 100; newCtrl.Height = 30;
-
-                    if (DesignSurface.Content is Panel p)
-                    {
-                        var pos = e.GetPosition(p);
-                        Canvas.SetLeft(newCtrl, pos.X); Canvas.SetTop(newCtrl, pos.Y);
-                        p.Children.Add(newCtrl);
-                        SelectControl(newCtrl);
-                        DesignChanged?.Invoke(this, EventArgs.Empty);
-                    }
-                }
-            }
-        }
-
-        private void DesignSurface_DragOver(object? sender, DragEventArgs e) => e.DragEffects = DragDropEffects.Copy;
+      
 
         #endregion
 
@@ -505,6 +558,271 @@ namespace VisualEditor.Designer
                 UpdateRulers();
                 UpdateAdornerPosition();
             }
+        }
+
+        #endregion
+
+        #region 9. محرك السحب والإفلات (Drag & Drop Logic)
+
+        private void DesignSurface_DragOver(object? sender, DragEventArgs e)
+        {
+            // التأكد إن البيانات المسحوبة هي نوع كنترول (ControlType)
+            e.DragEffects = e.Data.Contains("ControlType") ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void DesignSurface_Drop(object? sender, DragEventArgs e)
+        {
+            if (e.Data.Contains("ControlType"))
+            {
+                string typeName = e.Data.Get("ControlType")?.ToString() ?? "";
+                Type? controlType = Type.GetType(typeName);
+
+                if (controlType != null && typeof(Control).IsAssignableFrom(controlType))
+                {
+                    // 1. لو السطح فاضي خالص، بننشئ Canvas كحاوية أساسية
+                    if (DesignSurface.Content == null)
+                        DesignSurface.Content = new Canvas { Background = Brushes.Transparent };
+
+                    // 2. إنشاء نسخة جديدة من الكنترول (Reflection)
+                    var newControl = (Control)Activator.CreateInstance(controlType)!;
+                    newControl.Width = 100;
+                    newControl.Height = 30;
+
+                    // ضبط النص الافتراضي للكنترول بناءً على نوعه
+                    if (newControl is ContentControl cc) cc.Content = controlType.Name;
+                    else if (newControl is TextBlock tb) tb.Text = controlType.Name;
+
+                    // 3. 🎯 البحث عن حاوية صالحة (التي يتم الإسقاط فوقها)
+                    Control? targetContainer = GetValidDropTarget(e.Source as Control);
+                    if (targetContainer == null) return;
+
+                    var dropPosition = e.GetPosition(targetContainer);
+
+                    // 4. إضافة الكنترول للحاوية المناسبة
+                    if (targetContainer is Panel targetPanel)
+                    {
+                        if (targetPanel is Canvas)
+                        {
+                            Canvas.SetLeft(newControl, dropPosition.X);
+                            Canvas.SetTop(newControl, dropPosition.Y);
+                        }
+                        else
+                        {
+                            newControl.Margin = new Thickness(0);
+                        }
+                        targetPanel.Children.Add(newControl);
+                    }
+                    else if (targetContainer is ContentControl targetContentControl)
+                    {
+                        targetContentControl.Content = newControl;
+                    }
+
+                    // 5. تحديد الكنترول الجديد فوراً عشان المربع الأزرق يظهر عليه
+                    SelectControl(newControl);
+
+                    // 6. إبلاغ الشاشة الأم بتغيير التصميم
+                    DesignChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+
+        /// <summary>
+        /// دالة ذكية للبحث في شجرة العناصر عن أول "حاوية" (Panel أو ContentControl) صالحة لاستقبال العنصر الجديد
+        /// </summary>
+        private Control? GetValidDropTarget(Control? hitControl)
+        {
+            Control? current = hitControl;
+            while (current != null && current != DesignSurface)
+            {
+                if (current is Panel) return current;
+                if (current is ContentControl cc && cc.Content == null && current != DesignSurface.Content) return current;
+                current = current.Parent as Control;
+            }
+            return DesignSurface.Content as Control;
+        }
+
+        #endregion
+
+        #region 10. القائمة المختصرة (Context Menu Logic)
+
+        private void CreateContextMenu()
+        {
+            // إنشاء القائمة
+            var menu = new ContextMenu();
+
+            // 1. Bring to Front (إحضار للمقدمة)
+            var bringToFront = new MenuItem { Header = "Bring to Front", Icon = "🔼" };
+            bringToFront.Click += (s, e) => ChangeZOrder(true);
+
+            // 2. Send to Back (إرسال للخلف)
+            var sendToBack = new MenuItem { Header = "Send to Back", Icon = "🔽" };
+            sendToBack.Click += (s, e) => ChangeZOrder(false);
+
+            // 3. Duplicate (تكرار)
+            var duplicate = new MenuItem { Header = "Duplicate", Icon = "👥", InputGesture = new KeyGesture(Key.D, (KeyModifiers)RawInputModifiers.Control) };
+            duplicate.Click += (s, e) => DuplicateSelected();
+
+            // 4. Delete (مسح)
+            var delete = new MenuItem { Header = "Delete", Icon = "🗑️", InputGesture = new KeyGesture(Key.Delete) };
+            delete.Click += (s, e) => DeleteSelected();
+
+            var copy = new MenuItem { Header = "Copy", InputGesture = new KeyGesture(Key.C, (KeyModifiers)RawInputModifiers.Control) };
+            copy.Click += (s, e) => CopySelected();
+
+            var paste = new MenuItem { Header = "Paste", InputGesture = new KeyGesture(Key.V, (KeyModifiers)RawInputModifiers.Control) };
+            paste.Click += (s, e) => PasteSelected();
+
+            menu.ItemsSource = new List<MenuItem> { bringToFront, sendToBack, new MenuItem { Header = "-" }, duplicate, delete, copy, paste };
+
+            // ربط المنيو بالسطح التصميمي
+            DesignSurface.ContextMenu = menu;
+        }
+
+        private void ChangeZOrder(bool toFront)
+        {
+            if (_selectedControl == null || _selectedControl.Parent is not Panel parent) return;
+
+            // في Avalonia، الترتيب في قائمة Children هو اللي بيحدد مين فوق مين
+            parent.Children.Remove(_selectedControl);
+            if (toFront)
+                parent.Children.Add(_selectedControl); // إضافته في الآخر يخليه فوق الكل
+            else
+                parent.Children.Insert(0, _selectedControl); // إضافته في الأول يخليه تحت الكل
+
+            DesignChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void DuplicateSelected()
+        {
+            if (_selectedControl == null || _selectedControl.Parent is not Panel parent) return;
+
+            try
+            {
+                // 1. إنشاء نسخة جديدة من نفس النوع
+                var type = _selectedControl.GetType();
+                var clone = (Control)Activator.CreateInstance(type)!;
+
+                // 2. نسخ الخصائص الأساسية (الأبعاد والمحتوى)
+                clone.Width = _selectedControl.Width;
+                clone.Height = _selectedControl.Height;
+
+                if (clone is ContentControl cc && _selectedControl is ContentControl sourceCC) cc.Content = sourceCC.Content;
+                if (clone is TextBlock tb && _selectedControl is TextBlock sourceTB) tb.Text = sourceTB.Text;
+
+                // 3. تحديد مكان النسخة الجديدة (إزاحة بسيطة 10 بيكسل عشان ميبقوش فوق بعض بالظبط)
+                double newX = Canvas.GetLeft(_selectedControl).DefaultIfNaN() + 10;
+                double newY = Canvas.GetTop(_selectedControl).DefaultIfNaN() + 10;
+
+                Canvas.SetLeft(clone, newX);
+                Canvas.SetTop(clone, newY);
+
+                // 4. إضافة النسخة للمصمم وتحديدها
+                parent.Children.Add(clone);
+                SelectControl(clone);
+
+                DesignChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clone error: {ex.Message}"); }
+        }
+
+        private void DeleteSelected()
+        {
+            if (_selectedControl == null) return;
+
+            var targets = _selectedControls.Count > 0 ? _selectedControls.ToList() : new List<Control> { _selectedControl };
+            var parent = targets.First().Parent as Panel; // نحتفظ بالـ Parent
+
+            if (parent == null) return;
+
+            // 1. تنفيذ المسح الفعلي
+            foreach (var ctrl in targets) parent.Children.Remove(ctrl);
+            ClearSelection();
+            DesignChanged?.Invoke(this, EventArgs.Empty);
+
+            // 2. 🎯 تسجيل العملية في الـ History
+            HistoryService.Instance.RegisterChange(
+                undo: () =>
+                {
+                    // التراجع: نرجع العناصر للـ Parent ونحددهم
+                    foreach (var ctrl in targets) parent.Children.Add(ctrl);
+                    foreach (var ctrl in targets) SelectControl(ctrl);
+                    DesignChanged?.Invoke(this, EventArgs.Empty);
+                },
+                redo: () =>
+                {
+                    // الإعادة: نمسحهم تاني ونلغي التحديد
+                    foreach (var ctrl in targets) parent.Children.Remove(ctrl);
+                    ClearSelection();
+                    DesignChanged?.Invoke(this, EventArgs.Empty);
+                }
+            );
+        }
+
+        #endregion
+
+        #region 11. عمليات النسخ واللصق (Clipboard Operations)
+
+        // 1. 📄 نَسخ (Copy)
+        private void CopySelected()
+        {
+            if (_selectedControl == null) return;
+
+            // إحنا هنا بنعمل نسخة من الكنترول في الميموري
+            _internalClipboard = CloneControl(_selectedControl);
+            System.Diagnostics.Debug.WriteLine($"Copied: {_selectedControl.GetType().Name}");
+        }
+
+        // 2. 📋 لَصق (Paste)
+        private void PasteSelected()
+        {
+            if (_internalClipboard == null || DesignSurface.Content is not Panel parent) return;
+
+            // بناخد نسخة جديدة من اللي في الحافظة عشان نقدر نكرر اللصق كذا مرة
+            var newControl = CloneControl(_internalClipboard);
+
+            // إزاحة بسيطة عشان اللصق ميبقاش فوق النسخة القديمة بالظبط
+            double lastX = Canvas.GetLeft(_internalClipboard).DefaultIfNaN();
+            double lastY = Canvas.GetTop(_internalClipboard).DefaultIfNaN();
+
+            Canvas.SetLeft(newControl, lastX + 20);
+            Canvas.SetTop(newControl, lastY + 20);
+
+            parent.Children.Add(newControl);
+            SelectControl(newControl); // حدد العنصر الجديد فوراً
+
+            DesignChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        //// 3. 👥 تكرار (Duplicate) - هي عبارة عن Copy ثم Paste فوراً
+        //private void DuplicateSelected()
+        //{
+        //    if (_selectedControl == null) return;
+        //    CopySelected();
+        //    PasteSelected();
+        //}
+
+        /// <summary>
+        /// دالة سحرية لعمل نسخة طبق الأصل من الكنترول (Deep Clone)
+        /// </summary>
+        private Control CloneControl(Control source)
+        {
+            var type = source.GetType();
+            var clone = (Control)Activator.CreateInstance(type)!;
+
+            // نسخ الخصائص الأساسية
+            clone.Width = source.Width;
+            clone.Height = source.Height;
+          // clone.Background = source.Background;
+            clone.Opacity = source.Opacity;
+
+            // لو الكنترول ليه محتوى (زي الـ Button أو TextBlock)
+            if (clone is ContentControl cc && source is ContentControl sourceCC)
+                cc.Content = sourceCC.Content;
+            else if (clone is TextBlock tb && source is TextBlock sourceTB)
+                tb.Text = sourceTB.Text;
+
+            return clone;
         }
 
         #endregion
