@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -98,6 +98,54 @@ namespace VisualEditorApp.Services
                 .ToList();
 
             AddDocumentsWithNesting(projectNode, projectDirectory, cleanPaths);
+
+            // 🎯 إضافة عقدة "Dependencies" المحسنة (مقسمة لمجلدات)
+            if (roslynProject.ProjectReferences.Any() || roslynProject.MetadataReferences.Any())
+            {
+                var depsNode = new SolutionItemViewModel(SolutionItemKind.Folder, "Dependencies", null);
+                
+                // 1. مجلد المشاريع (Project References)
+                if (roslynProject.ProjectReferences.Any())
+                {
+                    var projectsFolder = new SolutionItemViewModel(SolutionItemKind.Folder, "Projects", null);
+                    foreach (var pr in roslynProject.ProjectReferences)
+                    {
+                        var referencedProject = roslynProject.Solution.Projects.FirstOrDefault(p => p.Id == pr.ProjectId);
+                        if (referencedProject != null)
+                        {
+                            projectsFolder.Children.Add(new SolutionItemViewModel(SolutionItemKind.Dependency, referencedProject.Name, referencedProject.FilePath));
+                        }
+                    }
+                    if (projectsFolder.Children.Any()) depsNode.Children.Add(projectsFolder);
+                }
+
+                // 2. مجلد الحزم (NuGet Packages)
+                var packagesFolder = new SolutionItemViewModel(SolutionItemKind.Folder, "Packages", null);
+                foreach (var mr in roslynProject.MetadataReferences)
+                {
+                    if (mr is PortableExecutableReference per && !string.IsNullOrEmpty(per.FilePath))
+                    {
+                        string fileName = Path.GetFileName(per.FilePath);
+                        if (per.FilePath.Contains(".nuget", StringComparison.OrdinalIgnoreCase) || 
+                            per.FilePath.Contains("packages", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string pkgName = Path.GetFileNameWithoutExtension(fileName);
+                            if (!packagesFolder.Children.Any(c => c.Name == pkgName))
+                            {
+                                packagesFolder.Children.Add(new SolutionItemViewModel(SolutionItemKind.NuGet, pkgName, per.FilePath));
+                            }
+                        }
+                    }
+                }
+
+                if (packagesFolder.Children.Any()) depsNode.Children.Add(packagesFolder);
+
+                if (depsNode.Children.Any())
+                {
+                    projectNode.Children.Add(depsNode);
+                }
+            }
+
             SortNodes(projectNode);
             return projectNode;
         }

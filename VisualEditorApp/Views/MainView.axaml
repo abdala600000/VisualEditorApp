@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="VisualEditorApp.Views.MainView"
+<UserControl x:Class="VisualEditorApp.Views.MainView"
 			 xmlns="https://github.com/avaloniaui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -17,6 +17,7 @@
 		<StreamGeometry x:Key="IconOpen">M4 4H6L7 6H14V12H6L4 10V4Z</StreamGeometry>
 		<StreamGeometry x:Key="IconSave">M3 3H12L14 5V13H3V3ZM5 5V7H11V5H5Z</StreamGeometry>
 		<StreamGeometry x:Key="IconRun">M5 4L12 8L5 12V4Z</StreamGeometry>
+		<StreamGeometry x:Key="IconBuild">M14.7,11C15.3,11 16,10.3 16,9.5C16,8.7 15.3,8 14.5,8C13.7,8 13,8.7 13,9.5C13,10.3 13.7,11 14.5,11M14.5,1C12,1 10,3 10,5.5C10,6.7 10.5,7.8 11.3,8.6L2.3,17.6C1.9,18 1.9,18.7 2.3,19.1L4.9,21.7C5.3,22.1 6,22.1 6.4,21.7L15.4,12.7C16.2,13.5 17.3,14 18.5,14C21,14 23,12 23,9.5C23,7 21,5 18.5,5C17.3,5 16.2,5.5 15.4,6.3L13.7,4.6C13.9,4.9 14,5.2 14,5.5C14,6.3 13.3,7 12.5,7C11.7,7 11,6.3 11,5.5C11,4.7 11.7,4 12.5,4C12.8,4 13.1,4.1 13.4,4.3L11.7,2.6C10.9,3.4 10.4,4.5 10.4,5.7L14.5,1.6L14.5,1Z</StreamGeometry>
 	</UserControl.Resources>
 	<UserControl.KeyBindings>
 		<KeyBinding Gesture="F5"
@@ -71,6 +72,19 @@
 				<MenuItem Header="Extensions" />
 				<MenuItem Header="Help" />
 
+				<MenuItem Header="Build">
+					<MenuItem Header="Build Startup Project" 
+							  Command="{Binding BuildStartupProjectCommand}"
+							  InputGesture="Ctrl+Shift+B">
+						<MenuItem.Icon>
+							<PathIcon Data="{StaticResource IconBuild}" Width="14" Height="14"/>
+						</MenuItem.Icon>
+					</MenuItem>
+					<Separator />
+					<MenuItem Header="Rebuild Startup Project" />
+					<MenuItem Header="Clean Startup Project" />
+				</MenuItem>
+
 				<MenuItem Header="_View">
 					<MenuItem Header="_Theme">
 						<MenuItem Header="_Rider Light"
@@ -97,6 +111,15 @@
 					<Button Content="💾" Background="Transparent" ToolTip.Tip="Save"/>
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
+
+					<Button Command="{Binding BuildStartupProjectCommand}"
+							ToolTip.Tip="Build Startup Project (Ctrl+Shift+B)"
+							Background="Transparent"
+							BorderThickness="0">
+						<PathIcon Data="{StaticResource IconBuild}"
+								  Foreground="#2270CF"
+								  Width="18" Height="18"/>
+					</Button>
 
 					<Button Command="{Binding RunProjectCommand}"
 							ToolTip.Tip="Run Startup Project (F5)"

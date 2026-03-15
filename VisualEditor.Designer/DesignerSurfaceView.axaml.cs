@@ -34,10 +34,12 @@ namespace VisualEditor.Designer
         private Point _dragStartMousePosition;
         private Point _dragStartControlPosition;
         private Point _selectionStartPoint;
+        private Point _currentPointerPosition;
 
         // الأحداث الخارجية
         public event EventHandler? DesignChanged;
         public event EventHandler<Control?>? SelectionChanged;
+        public Control? SelectedControl => _selectedControl;
 
         // خصائص الوصول
         public Control? RootDesign => DesignSurface.Content as Control;
@@ -134,6 +136,17 @@ namespace VisualEditor.Designer
                 SelectionAdorner.Height = rectInAdorner.Height;
                 Canvas.SetLeft(SelectionAdorner, rectInAdorner.X);
                 Canvas.SetTop(SelectionAdorner, rectInAdorner.Y);
+
+                // تطبيق الدوران على الـ Adorner عشان يلف مع الكنترول
+                if (_selectedControl.RenderTransform is RotateTransform rt)
+                {
+                    SelectionAdorner.RenderTransform = new RotateTransform(rt.Angle);
+                    SelectionAdorner.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
+                }
+                else
+                {
+                    SelectionAdorner.RenderTransform = null;
+                }
             }
         }
 
@@ -222,6 +235,7 @@ namespace VisualEditor.Designer
         private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
         {
             var currentPos = e.GetPosition(DesignSurface);
+            _currentPointerPosition = currentPos;
 
             if (_isSelecting)
             {
@@ -533,7 +547,37 @@ namespace VisualEditor.Designer
 
         #endregion
 
-        #region 8. مخرجات الزووم والملاحة (Zoom & Navigation)
+        #region 8. مخرجات الدوران والتحكم (Rotation Logic)
+
+        private void Rotate_DragDelta(object? sender, VectorEventArgs e)
+        {
+            if (_selectedControl == null) return;
+
+            // 1. حساب مركز الكنترول بالنسبة للـ AdornerCanvas
+            var transform = _selectedControl.TransformToVisual(AdornerCanvas);
+            if (!transform.HasValue) return;
+
+            var center = new Rect(0, 0, _selectedControl.Bounds.Width, _selectedControl.Bounds.Height)
+                .Center.Transform(transform.Value);
+
+            // 2. حساب موضع الماوس الحالي
+            var mousePos = _currentPointerPosition;
+
+            // 3. حساب الزاوية (Atan2 ترجع الزاوية بالراديان)
+            double angleRad = Math.Atan2(mousePos.Y - center.Y, mousePos.X - center.X);
+            double angleDeg = angleRad * (180 / Math.PI) + 90; // +90 عشان المقبض فوق
+
+            // 4. تطبيق الدوران
+            _selectedControl.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
+            _selectedControl.RenderTransform = new RotateTransform(Math.Round(angleDeg / 5.0) * 5.0); // Snap every 5 degrees
+
+            UpdateAdornerPosition();
+            DesignChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        #endregion
+
+        #region 9. مخرجات الزووم والملاحة (Zoom & Navigation)
 
         public void SetZoomLevel(string zoomMode)
         {
@@ -623,6 +667,12 @@ namespace VisualEditor.Designer
                     if (newControl is ContentControl cc) cc.Content = controlType.Name;
                     else if (newControl is TextBlock tb) tb.Text = controlType.Name;
 
+                    // 🎯 تسمية تلقائية فريدة لضمان عمل الـ Sync
+                    string baseName = controlType.Name;
+                    int counter = 1;
+                    while (FindControlByName(DesignSurface.Content as Control, $"{baseName}_{counter}") != null) counter++;
+                    newControl.Name = $"{baseName}_{counter}";
+
                     // 3. 🎯 البحث عن حاوية صالحة (التي يتم الإسقاط فوقها)
                     Control? targetContainer = GetValidDropTarget(e.Source as Control);
                     if (targetContainer == null) return;
@@ -645,10 +695,12 @@ namespace VisualEditor.Designer
                     }
                     else if (targetContainer is ContentControl targetContentControl)
                     {
+                        // 🎯 إذا كانت الحاوية تقبل عنصراً واحداً فقط، نقوم باستبدال المحتوى القديم
                         targetContentControl.Content = newControl;
                     }
                     else if (targetContainer is Decorator decoratorTarget)
                     {
+                        // 🎯 نفس الشيء للـ Decorator (مثل Border)
                         decoratorTarget.Child = newControl;
                     }
 
@@ -669,12 +721,37 @@ namespace VisualEditor.Designer
             Control? current = hitControl;
             while (current != null && current != DesignSurface)
             {
+                // 🎯 أي Panel (مثل Grid, StackPanel, Canvas) هو هدف صالح دائماً
                 if (current is Panel) return current;
-                if (current is ContentControl cc && cc.Content == null && current != DesignSurface.Content) return current;
-                if (current is Decorator dec && dec.Child == null && current != DesignSurface.Content) return current;
+
+                // 🎯 الـ ContentControl (مثل Button, ScrollViewer) والـ Decorator (مثل Border)
+                // أهداف صالحة حتى لو كان فيها محتوى (سنقوم باستبداله في دالة الـ Drop)
+                if (current is ContentControl && current != DesignSurface.Content) return current;
+                if (current is Decorator && current != DesignSurface.Content) return current;
+
                 current = current.Parent as Control;
             }
             return DesignSurface.Content as Control;
+        }
+
+        private Control? FindControlByName(Control? root, string name)
+        {
+            if (root == null) return null;
+            if (root.Name == name) return root;
+
+            if (root is Panel p)
+            {
+                foreach (var child in p.Children.OfType<Control>())
+                {
+                    var found = FindControlByName(child, name);
+                    if (found != null) return found;
+                }
+            }
+            else if (root is ContentControl cc && cc.Content is Control childContent)
+            {
+                return FindControlByName(childContent, name);
+            }
+            return null;
         }
 
         #endregion

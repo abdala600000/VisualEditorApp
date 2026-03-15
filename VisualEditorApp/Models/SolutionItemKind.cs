@@ -5,6 +5,8 @@ namespace VisualEditorApp.Models
         Solution,
         Project,
         Folder,
-        Document
+        Document,
+        Dependency,
+        NuGet
     }
 }

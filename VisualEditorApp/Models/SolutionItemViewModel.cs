@@ -17,6 +17,11 @@ namespace VisualEditorApp.Models
         [ObservableProperty] private bool _isSelected;
         [ObservableProperty] private bool _isBuilding; // الخاصية الجديدة
         [ObservableProperty] private bool _isStartupProject;
+        
+        public SolutionItemViewModel Self => this;
+
+        partial void OnIsStartupProjectChanged(bool value) => OnPropertyChanged(nameof(Self));
+        partial void OnIsBuildingChanged(bool value) => OnPropertyChanged(nameof(Self));
 
         public SolutionItemViewModel(SolutionItemKind kind, string name, string? path)
         {

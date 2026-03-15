@@ -12,13 +12,13 @@
 
 	<UserControl.Resources>
 		<tools:SolutionItemKindToIconConverter x:Key="SolutionItemIconConverter" />
+		<tools:SolutionItemToForegroundConverter x:Key="SolutionItemForegroundConverter" />
 			<StreamGeometry x:Key="IconRun">M5 4L12 8L5 12V4Z</StreamGeometry>
 	</UserControl.Resources>
 
 	<UserControl.Styles>
 		<Style Selector="PathIcon.startup">
-			<Setter Property="Foreground" Value="#4CAF50" />
-			<Setter Property="Data" Value="{StaticResource IconRun}"/>
+			<!-- Foreground is handled by converter now -->
 		</Style>
 		<Style Selector="TextBlock.startupText">
 			<Setter Property="Foreground" Value="#4CAF50" />
@@ -49,9 +49,8 @@
 										  Command="{Binding SetAsStartupCommand}"
 										  IsVisible="{Binding IsProjectNode}">
 									<MenuItem.Icon>
-										<PathIcon Data="{Binding Kind, Converter={StaticResource SolutionItemIconConverter}}"
+										<PathIcon Data="{Binding Self, Converter={StaticResource SolutionItemIconConverter}}"
 												  Width="14" Height="14"
-
 												  Foreground="{DynamicResource RiderMutedTextBrush}" />
 									</MenuItem.Icon>
 								</MenuItem>
@@ -62,19 +61,21 @@
 							</ContextMenu>
 						</StackPanel.ContextMenu>
 
-						<PathIcon Data="{Binding Kind, Converter={StaticResource SolutionItemIconConverter}}"
+						<PathIcon Data="{Binding Self , Converter={StaticResource SolutionItemIconConverter}}"
 								  Width="14" Height="14"
 								  Classes.startup="{Binding IsStartupProject}"
-								  Foreground="{DynamicResource RiderMutedTextBrush}" />
+								  Foreground="{Binding Self, Converter={StaticResource SolutionItemForegroundConverter}}" />
 
 						<TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
 						<ProgressBar IsVisible="{Binding IsBuilding}"
 									 IsIndeterminate="True"
-									 Width="40"
-									 Height="2"
+									 Width="60"
+									 Height="4"
 									 VerticalAlignment="Center"
-									 Margin="5,0,0,0"
-									 Foreground="#4CAF50" />
+									 Margin="8,0,0,0"
+									 Background="#334CAF50"
+									 Foreground="#4CAF50"
+									 ToolTip.Tip="Building Project..."/>
 
 
 					</StackPanel>
