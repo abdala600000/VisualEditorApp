@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:editor="clr-namespace:VisualEditor.CodeEditor;assembly=VisualEditor.CodeEditor"
              xmlns:designer="clr-namespace:VisualEditor.Designer;assembly=VisualEditor.Designer"
@@ -23,6 +23,11 @@
                 <ComboBoxItem>100%</ComboBoxItem>
                 <ComboBoxItem>Fit to Screen</ComboBoxItem>
             </ComboBox>
+            <ToggleButton x:Name="PreviewButton" 
+              Content="👁️ Preview" 
+              Width="90" Height="30"
+              Click="OnPreviewButton_Click"
+              ToolTip.Tip="Toggle Preview Mode (Ctrl+P)" />
         </StackPanel>
     </Border>
 

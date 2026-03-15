@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -184,7 +185,6 @@ namespace VisualEditorApp.Views.Documents
 
                 if (newControl != null)
                 {
-
                     // 2. استخراج الـ Design DataContext (نحفظه على جنب الأول)
                     object designContext = null;
                     if (newControl is Avalonia.Controls.Control originalControl)
@@ -192,13 +192,14 @@ namespace VisualEditorApp.Views.Documents
                         designContext = Avalonia.Controls.Design.GetDataContext(originalControl);
                     }
 
-                    Avalonia.Controls.Control finalElementToDisplay = newControl as Avalonia.Controls.Control;
+                    Avalonia.Controls.Control finalElementToDisplay = null;
 
-                    // 3. كود استخراج الـ Window والنافذة الوهمية
+                    // 3. كود استخراج وتغليف العنصر
                     if (newControl is Avalonia.Controls.Window window)
                     {
+                        // لو اللي جاي Window، بنفصل المحتوى بتاعه ونحطه جوه Border
                         var windowContent = window.Content as Avalonia.Controls.Control;
-                        window.Content = null; // فصل المحتوى
+                        window.Content = null;
 
                         var fakeWindow = new Avalonia.Controls.Border
                         {
@@ -209,19 +210,53 @@ namespace VisualEditorApp.Views.Documents
                             BoxShadow = Avalonia.Media.BoxShadows.Parse("0 5 15 0 #40000000")
                         };
 
-                        finalElementToDisplay = fakeWindow; // ده اللي هيتعرض
+                        finalElementToDisplay = fakeWindow;
+                    }
+                    else if (newControl is Avalonia.Controls.Control ctrl)
+                    {
+                        // 🎯 السحر هنا: بنحاول نسحب لون الخلفية بناءً على نوع الكنترول الحقيقي
+                        Avalonia.Media.IBrush bgBrush = Avalonia.Media.Brushes.White; // اللون الافتراضي
+
+                        if (ctrl is TemplatedControl templatedCtrl)
+                        {
+                            bgBrush = templatedCtrl.Background ?? bgBrush;
+                        }
+                        else if (ctrl is Avalonia.Controls.Panel panel)
+                        {
+                            bgBrush = panel.Background ?? bgBrush;
+                        }
+
+                        // 🎯 تغليف الكنترول جوه البوردر
+                        var wrapperBorder = new Avalonia.Controls.Border
+                        {
+                            Background = bgBrush,
+                            // بناخد عرض وطول الكنترول، لو مش متحددين بنديله حجم افتراضي 800x450
+                            Width = double.IsNaN(ctrl.Width) ? 800 : ctrl.Width,
+                            Height = double.IsNaN(ctrl.Height) ? 450 : ctrl.Height,
+                            Child = ctrl, // الكنترول نفسه بيتحط جوه البوردر
+                            BoxShadow = Avalonia.Media.BoxShadows.Parse("0 5 15 0 #40000000")
+                        };
+
+                        finalElementToDisplay = wrapperBorder;
                     }
 
                     // 🎯 4. السحر هنا: نطبق الـ DataContext على العنصر النهائي اللي هيظهر للمستخدم
                     if (designContext != null && finalElementToDisplay != null)
                     {
                         finalElementToDisplay.DataContext = designContext;
+
+                        // التأكد إن المحتوى الداخلي كمان أخد الـ DataContext
+                        if (finalElementToDisplay is Avalonia.Controls.Border b && b.Child != null)
+                        {
+                            b.Child.DataContext = designContext;
+                        }
                     }
 
-                    MyDesignSurface.LoadDesign(finalElementToDisplay);
+                    if (finalElementToDisplay != null)
+                    {
+                        MyDesignSurface.LoadDesign(finalElementToDisplay);
                         WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
-
-                   
+                    }
                 }
             }
             catch (Exception ex)
@@ -240,6 +275,25 @@ namespace VisualEditorApp.Views.Documents
                 if (zoomText != null)
                 {
                     MyDesignSurface?.SetZoomLevel(zoomText);
+                }
+            }
+        }
+
+        private void OnPreviewButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (sender is Avalonia.Controls.Primitives.ToggleButton toggleBtn)
+            {
+                // بنعرف الزرار مضغوط ولا لأ
+                bool isPreviewOn = toggleBtn.IsChecked == true;
+
+                // 🎯 بنبعت الحالة للمصمم
+                if (MyDesignSurface != null)
+                {
+                    MyDesignSurface.SetPreviewMode(isPreviewOn);
+
+                    // تغيير شكل الزرار عشان اليوزر يحس بالتغيير
+                    toggleBtn.Background = isPreviewOn ? Avalonia.Media.Brushes.LightGreen : Avalonia.Media.Brushes.Transparent;
+                    toggleBtn.Content = isPreviewOn ? "✏️ Edit Mode" : "👁️ Preview";
                 }
             }
         }

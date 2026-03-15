@@ -165,28 +165,28 @@ namespace VisualEditor.Designer
                 return; // سيب الـ ContextMenu يفتح لوحده
             }
 
-
-
             if (_isPreviewMode || !e.GetCurrentPoint(DesignSurface).Properties.IsLeftButtonPressed) return;
+
+            // تجاهل الضغط لو كان على نقاط التحجيم (Adorner)
+            if (e.Source is Visual v && (v == AdornerCanvas || AdornerCanvas.IsVisualAncestorOf(v))) return;
 
             var pos = e.GetPosition(DesignSurface);
             Control? clickedControl = GetSelectableControl(e.Source as Control);
 
             if (clickedControl != null)
             {
-                // 🎯 لو العنصر اللي ضغطنا عليه مش موجود في المجموعة الحالية، بنمسح المجموعة ونحدده هو بس
+                // 1. حالة الضغط على كنترول (زرار، تكست، إلخ)
                 if (!_selectedControls.Contains(clickedControl))
                 {
                     _selectedControls.Clear();
                     _selectedControls.Add(clickedControl);
-                    SelectControl(clickedControl); // لتحديث المربع الأزرق (Adorner) للفردي
+                    SelectControl(clickedControl);
                 }
 
                 _isDraggingControl = true;
                 _hasMoved = false;
                 _dragStartMousePosition = pos;
 
-                // 🎯 تخزين الأماكن الابتدائية لكل المجموعة
                 _groupStartPositions.Clear();
                 foreach (var ctrl in _selectedControls)
                 {
@@ -199,12 +199,23 @@ namespace VisualEditor.Designer
             }
             else
             {
-                // الضغط في الفراغ يبدأ مربع التحديد الأزرق
+                // 🎯 السحر هنا: المستخدم ضغط على الخلفية (المساحة الفاضية)
+
+                // 1. تحديد الصفحة أو اليوزر كنترول الأساسي (Root)
+                if (DesignSurface.Content is Control rootControl)
+                {
+                    _selectedControls.Clear();
+                    SelectControl(rootControl); // هيظهر البرواز على حدود الصفحة كلها
+                }
+                else
+                {
+                    ClearSelection();
+                }
+
+                // 2. تشغيل المربع الأزرق للتحديد المتعدد لو سحب الماوس
                 _isSelecting = true;
                 _selectionStartPoint = pos;
                 SelectionBox.IsVisible = true;
-                _selectedControls.Clear();
-                ClearSelection();
             }
         }
 
@@ -435,10 +446,19 @@ namespace VisualEditor.Designer
 
             }
         }
-       
 
-      
 
+
+        public void SetPreviewMode(bool isPreview)
+        {
+            _isPreviewMode = isPreview;
+
+            // أول ما ندخل وضع المشاهدة، بنخفي المربع الأزرق ونلغي أي تحديد
+            if (_isPreviewMode)
+            {
+                ClearSelection();
+            }
+        }
         #endregion
 
         #region 7. محرك التحجيم (Resizing Logic)
