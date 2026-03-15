@@ -76,6 +76,15 @@ namespace VisualEditorApp.Services
         private static SolutionItemViewModel CreateProjectNode(Project roslynProject)
         {
             var projectNode = new SolutionItemViewModel(SolutionItemKind.Project, roslynProject.Name, roslynProject.FilePath);
+                
+            // 🎯 استرجاع حالة مشروع التشغيل (Startup) من المدير
+            if (WorkspaceService.Instance.CurrentStartupProject != null && 
+                WorkspaceService.Instance.CurrentStartupProject.Path == roslynProject.FilePath)
+            {
+                projectNode.IsStartupProject = true;
+                // تحديث المرجع في المدير للنسخة الجديدة
+                WorkspaceService.Instance.SetCurrentStartupProject(projectNode);
+            }
             var projectDirectory = Path.GetDirectoryName(roslynProject.FilePath);
 
             // سحب كل المستندات (CS, AXAML, إلخ)

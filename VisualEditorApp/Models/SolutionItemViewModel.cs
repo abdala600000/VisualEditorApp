@@ -23,7 +23,7 @@ namespace VisualEditorApp.Models
         [ObservableProperty] private ObservableCollection<SolutionItemViewModel> _children = new();
         [ObservableProperty] private bool _isExpanded;
         [ObservableProperty] private bool _isBuilding;
-        [ObservableProperty] private bool _isStartupProject;
+        [ObservableProperty] [NotifyPropertyChangedFor(nameof(Self))] private bool _isStartupProject;
 
         public SolutionItemViewModel(SolutionItemKind kind, string name, string? path)
         {
@@ -33,6 +33,7 @@ namespace VisualEditorApp.Models
         }
 
         public bool IsProjectNode => Kind == SolutionItemKind.Project;
+        public bool IsSolutionNode => Kind == SolutionItemKind.Solution;
 
         public SolutionItemViewModel Self => this;
 
@@ -58,7 +59,7 @@ namespace VisualEditorApp.Models
         [RelayCommand]
         private async Task BuildAsync()
         {
-            if (IsProjectNode && !string.IsNullOrEmpty(Path))
+            if ((IsProjectNode || IsSolutionNode) && !string.IsNullOrEmpty(Path))
             {
                 try
                 {
@@ -77,7 +78,7 @@ namespace VisualEditorApp.Models
         [RelayCommand]
         private async Task CleanAsync()
         {
-            if (IsProjectNode && !string.IsNullOrEmpty(Path))
+            if ((IsProjectNode || IsSolutionNode) && !string.IsNullOrEmpty(Path))
             {
                 try
                 {
@@ -96,7 +97,7 @@ namespace VisualEditorApp.Models
         [RelayCommand]
         private async Task RebuildAsync()
         {
-            if (IsProjectNode && !string.IsNullOrEmpty(Path))
+            if ((IsProjectNode || IsSolutionNode) && !string.IsNullOrEmpty(Path))
             {
                 try
                 {

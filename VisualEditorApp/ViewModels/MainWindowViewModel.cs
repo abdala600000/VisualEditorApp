@@ -272,14 +272,17 @@ namespace VisualEditorApp.ViewModels
         }
 
         [RelayCommand]
-        private async void OpenNewProject()
+        private async Task NewSolution()
         {
             if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             {
-                var wizardWindow = new NewProjectWizardWindow();
+                var wizardWindow = new NewProjectWizardWindow(); // Reusing wizard for now or use a solution specific one if available
                 await wizardWindow.ShowDialog(desktop.MainWindow);
             }
         }
+
+        [RelayCommand]
+        private async Task NewProject() => await NewSolution();
 
         [RelayCommand]
         private async Task RunProject()

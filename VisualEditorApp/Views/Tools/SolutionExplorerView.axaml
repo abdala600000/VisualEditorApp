@@ -58,6 +58,9 @@
 								<Separator />
 								<MenuItem Header="Build Project" Command="{Binding BuildCommand}" IsVisible="{Binding IsProjectNode}" />
 								<MenuItem Header="Clean Project" Command="{Binding CleanCommand}" IsVisible="{Binding IsProjectNode}" />
+								<MenuItem Header="Build Solution" Command="{Binding BuildCommand}" IsVisible="{Binding IsSolutionNode}" />
+								<MenuItem Header="Clean Solution" Command="{Binding CleanCommand}" IsVisible="{Binding IsSolutionNode}" />
+								<MenuItem Header="Rebuild Solution" Command="{Binding RebuildCommand}" IsVisible="{Binding IsSolutionNode}" />
 							</ContextMenu>
 						</StackPanel.ContextMenu>
 
@@ -66,7 +69,8 @@
 								  Classes.startup="{Binding IsStartupProject}"
 								  Foreground="{Binding Self, Converter={StaticResource SolutionItemForegroundConverter}}" />
 
-						<TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+								   />
 						<ProgressBar IsVisible="{Binding IsBuilding}"
 									 IsIndeterminate="True"
 									 Width="60"

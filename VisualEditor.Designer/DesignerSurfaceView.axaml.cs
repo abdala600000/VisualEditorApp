@@ -37,10 +37,12 @@ namespace VisualEditor.Designer
         private Point _dragStartControlPosition;
         private Point _selectionStartPoint;
         private Point _currentPointerPosition;
+        private Point _lastAdornerMousePos;
 
-        // الأحداث الخارجية
         public event EventHandler? DesignChanged;
         public event EventHandler<Control?>? SelectionChanged;
+        public event EventHandler<(Control Element, Control Parent)>? ElementAdded;
+        public event EventHandler<Control>? ElementRemoved;
         public Control? SelectedControl => _selectedControl;
 
         // خصائص الوصول
@@ -103,15 +105,30 @@ namespace VisualEditor.Designer
 
         #region 3. التحكم في التحديد (Selection Logic)
 
-        public void SelectControl(Control? control)
+        public void SelectControl(Control? control, bool isAdditive = false)
         {
-            _selectedControl = control;
-            if (control != null)
+            if (control == null)
             {
-                UpdateAdornerPosition();
-                SelectionAdorner.IsVisible = true;
-                AdornerCanvas.IsHitTestVisible = true;
+                ClearSelection();
+                return;
             }
+
+            if (!isAdditive)
+            {
+                _selectedControls.Clear();
+            }
+
+            if (!_selectedControls.Contains(control))
+            {
+                _selectedControls.Add(control);
+            }
+
+            _selectedControl = control;
+            
+            UpdateAdornerPosition();
+            SelectionAdorner.IsVisible = true;
+            AdornerCanvas.IsHitTestVisible = true;
+            
             SelectionChanged?.Invoke(this, control);
         }
 
@@ -127,20 +144,45 @@ namespace VisualEditor.Designer
 
         private void UpdateAdornerPosition()
         {
-            if (_selectedControl == null) return;
-            var transform = _selectedControl.TransformToVisual(AdornerCanvas);
-            if (transform != null)
+            if (_selectedControls.Count == 0)
             {
-                var bounds = new Rect(new Point(0, 0), _selectedControl.Bounds.Size);
-                var rectInAdorner = bounds.TransformToAABB(transform.Value);
+                SelectionAdorner.IsVisible = false;
+                AdornerCanvas.IsHitTestVisible = false;
+                return;
+            }
 
-                SelectionAdorner.Width = rectInAdorner.Width;
-                SelectionAdorner.Height = rectInAdorner.Height;
-                Canvas.SetLeft(SelectionAdorner, rectInAdorner.X);
-                Canvas.SetTop(SelectionAdorner, rectInAdorner.Y);
+            // 🎯 حساب المربع المحيط بكل العناصر المحددة (Bounding Box)
+            Rect? groupBounds = null;
+            foreach (var ctrl in _selectedControls)
+            {
+                var transform = ctrl.TransformToVisual(AdornerCanvas);
+                if (transform.HasValue)
+                {
+                    var bounds = new Rect(new Point(0, 0), ctrl.Bounds.Size);
+                    var rectInAdorner = bounds.TransformToAABB(transform.Value);
+                    
+                    if (groupBounds == null) groupBounds = rectInAdorner;
+                    else groupBounds = groupBounds.Value.Union(rectInAdorner);
+                }
+            }
 
-                // تطبيق الدوران على الـ Adorner عشان يلف مع الكنترول
-                if (_selectedControl.RenderTransform is RotateTransform rt)
+            if (groupBounds != null)
+            {
+                var finalBounds = groupBounds.Value;
+                SelectionAdorner.Width = finalBounds.Width;
+                SelectionAdorner.Height = finalBounds.Height;
+                Canvas.SetLeft(SelectionAdorner, finalBounds.X);
+                Canvas.SetTop(SelectionAdorner, finalBounds.Y);
+
+                SelectionAdorner.IsVisible = true;
+                AdornerCanvas.IsHitTestVisible = true;
+
+                // إخفاء مقبض الدوران لو فيه أكتر من عنصر لتجنب التعقيد حالياً
+                var rotateHandle = SelectionAdorner.FindControl<Control>("RotateHandle");
+                if (rotateHandle != null) rotateHandle.IsVisible = _selectedControls.Count == 1;
+
+                // تطبيق الدوران فقط لو فيه عنصر واحد
+                if (_selectedControls.Count == 1 && _selectedControls[0].RenderTransform is RotateTransform rt)
                 {
                     SelectionAdorner.RenderTransform = new RotateTransform(rt.Angle);
                     SelectionAdorner.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
@@ -157,7 +199,11 @@ namespace VisualEditor.Designer
             Control? current = element;
             while (current != null)
             {
-                if (current == DesignSurface || current == DesignSurface.Content) return null;
+                if (current == DesignSurface) return null;
+                
+                // 🎯 لو العنصر هو الـ Content الأساسي (Root)، نرجعه عادي عشان يظهر في الـ Properties
+                if (current == DesignSurface.Content) return current;
+
                 if (current.TemplatedParent is Control parentControl) { current = parentControl; continue; }
                 return current;
             }
@@ -170,6 +216,11 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerPressed(object? sender, PointerPressedEventArgs e)
         {
+            // 🎯 ضمان الحصول على التركيز (Focus) عشان زر Delete يشتغل
+            MyZoomBorder.Focus();
+            
+            if (e.GetCurrentPoint(DesignSurface).Properties.IsMiddleButtonPressed) return;
+
             var props = e.GetCurrentPoint(DesignSurface).Properties;
 
             // لو ضغط كليك يمين
@@ -188,14 +239,30 @@ namespace VisualEditor.Designer
             var pos = e.GetPosition(DesignSurface);
             Control? clickedControl = GetSelectableControl(e.Source as Control);
 
+            // التحقق من ضغط زر الـ Ctrl للتحديد المتعدد
+            bool isCtrlPressed = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+
             if (clickedControl != null)
             {
                 // 1. حالة الضغط على كنترول (زرار، تكست، إلخ)
-                if (!_selectedControls.Contains(clickedControl))
+                if (isCtrlPressed)
                 {
-                    _selectedControls.Clear();
-                    _selectedControls.Add(clickedControl);
-                    SelectControl(clickedControl);
+                    // إضافة أو إزالة من التحديد الحالي
+                    if (_selectedControls.Contains(clickedControl))
+                        _selectedControls.Remove(clickedControl);
+                    else
+                        _selectedControls.Add(clickedControl);
+                    
+                    SelectControl(clickedControl, true);
+                }
+                else
+                {
+                    if (!_selectedControls.Contains(clickedControl))
+                    {
+                        _selectedControls.Clear();
+                        _selectedControls.Add(clickedControl);
+                        SelectControl(clickedControl);
+                    }
                 }
 
                 _isDraggingControl = true;
@@ -236,8 +303,12 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
         {
-            var currentPos = e.GetPosition(DesignSurface);
+            var currentPos = e.GetPosition(DesignSurface); // الإحداثيات بالنسبة للمصمم (Zoomed)
             _currentPointerPosition = currentPos;
+
+            // 🎯 تحديث موضع الماوس بالنسبة للـ AdornerCanvas (Unzoomed) للعمليات الرياضية
+            var adPos = e.GetPosition(AdornerCanvas);
+            _lastAdornerMousePos = adPos;
 
             if (_isSelecting)
             {
@@ -438,11 +509,18 @@ namespace VisualEditor.Designer
                 // مسح كل العناصر المحددة من الواجهة
                 foreach (var ctrl in _selectedControls.ToList())
                 {
-                    if (ctrl.Parent is Panel p) p.Children.Remove(ctrl);
-                    else if (ctrl.Parent is ContentControl cc) cc.Content = null;
+                    if (ctrl.Parent is Panel p)
+                    {
+                        p.Children.Remove(ctrl);
+                        ElementRemoved?.Invoke(this, ctrl);
+                    }
+                    else if (ctrl.Parent is ContentControl cc)
+                    {
+                        cc.Content = null;
+                        ElementRemoved?.Invoke(this, ctrl);
+                    }
                 }
                 ClearSelection();
-                DesignChanged?.Invoke(this, EventArgs.Empty);
             }
             if (e.KeyModifiers == KeyModifiers.Control)
             {
@@ -562,8 +640,8 @@ namespace VisualEditor.Designer
             var center = new Rect(0, 0, _selectedControl.Bounds.Width, _selectedControl.Bounds.Height)
                 .Center.Transform(transform.Value);
 
-            // 2. حساب موضع الماوس الحالي
-            var mousePos = _currentPointerPosition;
+            // 2. حساب موضع الماوس الحالي بالنسبة للـ Adorner (لأنه غير متأثر بالزووم)
+            var mousePos = _lastAdornerMousePos;
 
             // 3. حساب الزاوية (Atan2 ترجع الزاوية بالراديان)
             double angleRad = Math.Atan2(mousePos.Y - center.Y, mousePos.X - center.X);
@@ -571,9 +649,12 @@ namespace VisualEditor.Designer
 
             // 4. تطبيق الدوران
             _selectedControl.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
-            _selectedControl.RenderTransform = new RotateTransform(Math.Round(angleDeg / 5.0) * 5.0); // Snap every 5 degrees
+            double snappedAngle = Math.Round(angleDeg / 5.0) * 5.0;
+            _selectedControl.RenderTransform = new RotateTransform(snappedAngle);
 
             UpdateAdornerPosition();
+            
+            // 🎯 إبلاغ السيستم بتغير الـ RenderTransform يدوياً لضمان الـ Sync
             DesignChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -677,8 +758,22 @@ namespace VisualEditor.Designer
                     newControl.Name = $"{baseName}_{counter}";
 
                     // 3. 🎯 البحث عن حاوية صالحة (التي يتم الإسقاط فوقها)
-                    Control? targetContainer = GetValidDropTarget(e.Source as Control);
+                    Control? hitControl = e.Source as Control;
+                    Control? targetContainer = GetValidDropTarget(hitControl);
                     if (targetContainer == null) return;
+
+                    // 🎯 ضمان وجود اسم للحاوية لنجاح عملية المزامنة مع الـ XAML
+                    // نستثني الـ Root والـ Simulated Shells لأن الـ XAML Patcher بيفهم إن الأب الجذري كود فارغ
+                    if (string.IsNullOrEmpty(targetContainer.Name) && 
+                        targetContainer != DesignSurface.Content && 
+                        targetContainer.Name != "SimulatedContentArea" && 
+                        targetContainer.Name != "SimulatedWindowFrame")
+                    {
+                        string baseParentName = targetContainer.GetType().Name;
+                        int pCounter = 1;
+                        while (FindControlByName(DesignSurface.Content as Control, $"{baseParentName}_{pCounter}") != null) pCounter++;
+                        targetContainer.Name = $"{baseParentName}_{pCounter}";
+                    }
 
                     var dropPosition = e.GetPosition(targetContainer);
 
@@ -710,8 +805,8 @@ namespace VisualEditor.Designer
                     // 5. تحديد الكنترول الجديد فوراً عشان المربع الأزرق يظهر عليه
                     SelectControl(newControl);
 
-                    // 6. إبلاغ الشاشة الأم بتغيير التصميم
-                    DesignChanged?.Invoke(this, EventArgs.Empty);
+                    // 6. إبلاغ الشاشة الأم بإضافة عنصر جديد
+                    ElementAdded?.Invoke(this, (newControl, targetContainer));
                 }
             }
         }
@@ -721,9 +816,24 @@ namespace VisualEditor.Designer
         /// </summary>
         private Control? GetValidDropTarget(Control? hitControl)
         {
+            if (DesignSurface.Content == null) return null;
+
             Control? current = hitControl;
             while (current != null && current != DesignSurface)
             {
+                // 🎯 تجاوز الإطارات الوهمية للنافذة والذهاب مباشرة للمحتوى الحقيقي
+                if (current.Name == "SimulatedWindowFrame" || current.Name == "SimulatedContentArea" || current.Name == "SimulatedTitleBar")
+                {
+                    var contentArea = FindControlByName(DesignSurface.Content as Control, "SimulatedContentArea") as Border;
+                    if (contentArea != null)
+                    {
+                        if (contentArea.Child is Control actualContent)
+                            return actualContent;
+                        else
+                            return contentArea;
+                    }
+                }
+
                 // 🎯 أي Panel (مثل Grid, StackPanel, Canvas) هو هدف صالح دائماً
                 if (current is Panel) return current;
 
@@ -810,36 +920,37 @@ namespace VisualEditor.Designer
 
         private void DuplicateSelected()
         {
-            if (_selectedControl == null || _selectedControl.Parent is not Panel parent) return;
+            var targets = _selectedControls.Count > 0 ? _selectedControls.ToList() : (_selectedControl != null ? new List<Control> { _selectedControl } : new List<Control>());
+            if (targets.Count == 0 || targets[0].Parent is not Panel parent) return;
 
             try
             {
-                // 1. إنشاء نسخة جديدة من نفس النوع
-                var type = _selectedControl.GetType();
-                var clone = (Control)Activator.CreateInstance(type)!;
+                var newSelection = new List<Control>();
+                foreach (var target in targets)
+                {
+                    // 1. إنشاء نسخة جديدة
+                    var clone = CloneControl(target);
 
-                // 2. نسخ الخصائص الأساسية (الأبعاد والمحتوى)
-                clone.Width = _selectedControl.Width;
-                clone.Height = _selectedControl.Height;
+                    // 2. تحديد مكان النسخة الجديدة (إزاحة بسيطة 20 بيكسل)
+                    double newX = Canvas.GetLeft(target).DefaultIfNaN() + 20;
+                    double newY = Canvas.GetTop(target).DefaultIfNaN() + 20;
 
-                if (clone is ContentControl cc && _selectedControl is ContentControl sourceCC) cc.Content = sourceCC.Content;
-                if (clone is TextBlock tb && _selectedControl is TextBlock sourceTB) tb.Text = sourceTB.Text;
+                    Canvas.SetLeft(clone, newX);
+                    Canvas.SetTop(clone, newY);
 
-                // 3. تحديد مكان النسخة الجديدة (إزاحة بسيطة 10 بيكسل عشان ميبقوش فوق بعض بالظبط)
-                double newX = Canvas.GetLeft(_selectedControl).DefaultIfNaN() + 10;
-                double newY = Canvas.GetTop(_selectedControl).DefaultIfNaN() + 10;
+                    // 3. إضافة النسخة للمصمم
+                    parent.Children.Add(clone);
+                    newSelection.Add(clone);
+                }
 
-                Canvas.SetLeft(clone, newX);
-                Canvas.SetTop(clone, newY);
-
-                // 4. إضافة النسخة للمصمم وتحديدها
-                parent.Children.Add(clone);
-                SelectControl(clone);
+                // 4. تحديد العناصر الجديدة كمجموعة
+                _selectedControls.Clear();
+                foreach (var ctrl in newSelection) SelectControl(ctrl, true);
 
                 DesignChanged?.Invoke(this, EventArgs.Empty);
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 System.Diagnostics.Debug.WriteLine($"Clone error: {ex.Message}");
                 MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "DESIGN002", $"Clone error: {ex.Message}"));
             }

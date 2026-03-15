@@ -50,6 +50,9 @@
 				</Menu.Styles>
 				<MenuItem Header="File">
 					<MenuItem Header="New">
+						<MenuItem Header="New Solution..." Command="{Binding NewSolutionCommand}" />
+						<MenuItem Header="New Project..." Command="{Binding NewProjectCommand}" />
+						<Separator />
 						<MenuItem Header="New File..." Command="{Binding NewFileCommand}" />
 						<MenuItem Header="New Folder..." Command="{Binding NewFolderCommand}" />
 					</MenuItem>
@@ -111,7 +114,7 @@
 					<Button Command="{Binding NewFileCommand}" Background="Transparent" ToolTip.Tip="New File (Ctrl+N)">
 						<TextBlock Text="📄" FontSize="18"/>
 					</Button>
-					<Button Command="{Binding OpenNewProjectCommand}" Background="Transparent" ToolTip.Tip="Open Project/Folder (Ctrl+O)">
+					<Button Command="{Binding NewProjectCommand}" Background="Transparent" ToolTip.Tip="Open Project/Folder (Ctrl+O)">
 						<TextBlock Text="📂" FontSize="18"/>
 					</Button>
 					<Button Command="{Binding SaveFileCommand}" Background="Transparent" ToolTip.Tip="Save (Ctrl+S)">
@@ -153,7 +156,7 @@
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
 
-					<Button Content="New Project" Command="{Binding OpenNewProjectCommand}"
+					<Button Content="New Project" Command="{Binding NewProjectCommand}"
 							Background="#3E3E42" Foreground="White" Padding="10,2" CornerRadius="3"/>
 				</StackPanel>
 				<TextBox Grid.Column="4"

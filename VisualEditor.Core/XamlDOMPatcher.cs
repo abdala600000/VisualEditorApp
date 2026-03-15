@@ -84,13 +84,93 @@ public static class XamlDOMPatcher
         }
     }
 
+    public static string AddElement(string originalXaml, string parentName, string elementType, string newName, string extraProps = "")
+    {
+        if (string.IsNullOrWhiteSpace(originalXaml)) return originalXaml;
+
+        XmlDocument doc = new XmlDocument();
+        doc.PreserveWhitespace = true;
+
+        try
+        {
+            doc.LoadXml(originalXaml);
+            XmlElement? parent = null;
+
+            if (string.IsNullOrEmpty(parentName))
+            {
+                parent = doc.DocumentElement;
+            }
+            else
+            {
+                parent = FindElementByName(doc.DocumentElement, parentName);
+            }
+
+            if (parent != null)
+            {
+                // Create the element with simple logic - for now assume standard Avalonia namespace
+                XmlElement newEl = doc.CreateElement(elementType, parent.NamespaceURI);
+                if (!string.IsNullOrEmpty(newName))
+                {
+                    newEl.SetAttribute("Name", newName);
+                }
+
+                // Apply extra props if any (e.g. Width="100")
+                if (!string.IsNullOrEmpty(extraProps))
+                {
+                    // Simple parser for "Prop1=Value1 Prop2=Value2"
+                    var pairs = extraProps.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var pair in pairs)
+                    {
+                        var parts = pair.Split('=');
+                        if (parts.Length == 2)
+                        {
+                            newEl.SetAttribute(parts[0], parts[1].Trim('"'));
+                        }
+                    }
+                }
+
+                parent.AppendChild(newEl);
+                return RenderXmlDocument(doc);
+            }
+        }
+        catch (XmlException) { }
+
+        return originalXaml;
+    }
+
+    public static string RemoveElement(string originalXaml, string name)
+    {
+        if (string.IsNullOrEmpty(name) || string.IsNullOrWhiteSpace(originalXaml)) return originalXaml;
+
+        XmlDocument doc = new XmlDocument();
+        doc.PreserveWhitespace = true;
+
+        try
+        {
+            doc.LoadXml(originalXaml);
+            XmlElement? target = FindElementByName(doc.DocumentElement, name);
+
+            if (target != null && target.ParentNode != null)
+            {
+                target.ParentNode.RemoveChild(target);
+                return RenderXmlDocument(doc);
+            }
+        }
+        catch (XmlException) { }
+
+        return originalXaml;
+    }
+
     private static string RenderXmlDocument(XmlDocument doc)
     {
         using var stringWriter = new StringWriter();
+        // 🎯 الحفاظ على التشكيلة الأصلية للملف قدر الإمكان
         using var xmlTextWriter = XmlWriter.Create(stringWriter, new XmlWriterSettings
         {
             OmitXmlDeclaration = true,
-            Indent = false, // Keep existing whitespaces explicitly
+            Indent = true, 
+            IndentChars = "    ", // استخدام 4 مسافات كالمعتاد في Visual Studio
+            NewLineHandling = NewLineHandling.None, // الحفاظ على نهايات الأسطر
             NamespaceHandling = NamespaceHandling.OmitDuplicates
         });
 

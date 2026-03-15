@@ -113,6 +113,8 @@ namespace VisualEditorApp.Views.Documents
             {
                 MyDesignSurface.DesignChanged += MyDesignSurface_DesignChanged;
                 MyDesignSurface.SelectionChanged += MyDesignSurface_SelectionChanged;
+                MyDesignSurface.ElementAdded += MyDesignSurface_ElementAdded;
+                MyDesignSurface.ElementRemoved += MyDesignSurface_ElementRemoved;
             }
         }
 
@@ -217,6 +219,58 @@ namespace VisualEditorApp.Views.Documents
             }
         }
 
+        private void MyDesignSurface_ElementAdded(object? sender, (Control Element, Control Parent) args)
+        {
+            if (_isUpdating || MyCodeEditor == null) return;
+            _isUpdating = true;
+            try
+            {
+                string xml = MyCodeEditor.Text;
+                string parentName = args.Parent?.Name ?? "";
+                
+                // 🎯 إذا كان الأب هو الـ Root أو أجزاء الـ Window الوهمية، نرسل أمر الإضافة للعنصر الجذري في الـ XAML مباشرة
+                if (args.Parent == MyDesignSurface.RootDesign || 
+                    parentName == "SimulatedContentArea" || 
+                    parentName == "SimulatedWindowFrame" || 
+                    parentName == "SimulatedTitleBar")
+                {
+                    parentName = ""; 
+                }
+
+                string typeName = args.Element.GetType().Name;
+                string newName = args.Element.Name ?? "";
+
+                string extraProps = $"Width=\"{args.Element.Width}\" Height=\"{args.Element.Height}\"";
+                if (args.Parent is Canvas)
+                {
+                    extraProps += $" Canvas.Left=\"{Canvas.GetLeft(args.Element)}\" Canvas.Top=\"{Canvas.GetTop(args.Element)}\"";
+                }
+
+                string newXml = XamlDOMPatcher.AddElement(xml, parentName, typeName, newName, extraProps);
+                if (newXml != xml)
+                {
+                    MyCodeEditor.SetXamlText(newXml);
+                }
+            }
+            finally { _isUpdating = false; }
+        }
+
+        private void MyDesignSurface_ElementRemoved(object? sender, Control element)
+        {
+            if (_isUpdating || MyCodeEditor == null || string.IsNullOrEmpty(element.Name)) return;
+            _isUpdating = true;
+            try
+            {
+                string xml = MyCodeEditor.Text;
+                string newXml = XamlDOMPatcher.RemoveElement(xml, element.Name);
+                if (newXml != xml)
+                {
+                    MyCodeEditor.SetXamlText(newXml);
+                }
+            }
+            finally { _isUpdating = false; }
+        }
+
         public void SetXamlText(string xml, string filePath)
         {
             if (MyCodeEditor == null || MyDesignSurface == null) return;
@@ -242,40 +296,54 @@ namespace VisualEditorApp.Views.Documents
                         var windowContent = window.Content as Control;
                         window.Content = null;
 
-                        var fakeWindow = new Border
+                        // بناء نافذة وهمية (Simulated Window)
+                        var windowFrame = new Grid
                         {
-                            Background = window.Background ?? Brushes.White,
+                            Name = window.Name, // 🎯 الحفاظ على الاسم عشان التحديد يشتغل صح
                             Width = double.IsNaN(window.Width) ? 800 : window.Width,
                             Height = double.IsNaN(window.Height) ? 450 : window.Height,
+                            ClipToBounds = false,
+                            RowDefinitions = RowDefinitions.Parse("30, *")
+                        };
+
+                        // شريط العنوان
+                        var titleBar = new Border
+                        {
+                            Name = "SimulatedTitleBar",
+                            Background = Brush.Parse("#3C3C3C"),
+                            CornerRadius = new CornerRadius(5, 5, 0, 0),
+                            Child = new TextBlock 
+                            { 
+                                Text = window.Title ?? "Window Preview", 
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                                Margin = new Thickness(10, 0),
+                                Foreground = Brushes.White,
+                                FontSize = 12
+                            }
+                        };
+                        Grid.SetRow(titleBar, 0);
+
+                        // المحتوى
+                        var contentArea = new Border
+                        {
+                            Name = "SimulatedContentArea",
+                            Background = window.Background ?? Brushes.White,
+                            CornerRadius = new CornerRadius(0, 0, 5, 5),
                             Child = windowContent,
                             BoxShadow = BoxShadows.Parse("0 5 15 0 #40000000")
                         };
+                        Grid.SetRow(contentArea, 1);
 
-                        finalElementToDisplay = fakeWindow;
+                        windowFrame.Children.Add(titleBar);
+                        windowFrame.Children.Add(contentArea);
+
+                        finalElementToDisplay = windowFrame;
                     }
                     else if (newControl is Control ctrl)
                     {
-                        IBrush bgBrush = Brushes.White;
-
-                        if (ctrl is TemplatedControl templatedCtrl)
-                        {
-                            bgBrush = templatedCtrl.Background ?? bgBrush;
-                        }
-                        else if (ctrl is Panel panel)
-                        {
-                            bgBrush = panel.Background ?? bgBrush;
-                        }
-
-                        var wrapperBorder = new Border
-                        {
-                            Background = bgBrush,
-                            Width = double.IsNaN(ctrl.Width) ? 800 : ctrl.Width,
-                            Height = double.IsNaN(ctrl.Height) ? 450 : ctrl.Height,
-                            Child = ctrl,
-                            BoxShadow = BoxShadows.Parse("0 5 15 0 #40000000")
-                        };
-
-                        finalElementToDisplay = wrapperBorder;
+                        // 🎯 هنا قمنا بإزالة الـ Wrapper Border لتجنب تعقيد هيكلة الـ XAML
+                        // وضع كنترول المستخدم النهائي مباشرة هو الأفضل للمزامنة مع الكود
+                        finalElementToDisplay = ctrl;
                     }
 
                     if (designContext != null && finalElementToDisplay != null)

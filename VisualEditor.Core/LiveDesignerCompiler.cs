@@ -157,6 +157,11 @@ namespace VisualEditor.Core
             var dllFiles = Directory.GetFiles(path, "*.dll", SearchOption.AllDirectories);
             foreach (var dll in dllFiles)
             {
+                // 🎯 تخطي ملفات الـ DLL الخاصة بـ C++ أو الـ Runtimes لتجنب أخطاء التحميل (Native DLLs)
+                string lowerPath = dll.ToLower();
+                if (lowerPath.Contains("\\runtimes\\") || lowerPath.Contains("\\native\\"))
+                    continue;
+
                 try
                 {
                     var name = AssemblyName.GetAssemblyName(dll).Name;
@@ -167,7 +172,7 @@ namespace VisualEditor.Core
                 }
                 catch (Exception ex) 
                 { 
-                    System.Diagnostics.Debug.WriteLine($"Error loading DLL {dll}: {ex.Message}");
+                 
                     MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Warning, "DLL001", $"Failed to load assembly {Path.GetFileName(dll)}: {ex.Message}"));
                 }
             }
