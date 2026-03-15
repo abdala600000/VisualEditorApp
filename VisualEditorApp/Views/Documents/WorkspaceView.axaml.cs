@@ -11,6 +11,7 @@ using VisualEditor.CodeEditor;
 using VisualEditor.Core;
 using VisualEditor.Core.Messages;
 using VisualEditor.Designer;
+using VisualEditor.Core.Models;
 using VisualEditorApp.ViewModels;
 using VisualEditorApp.ViewModels.Documents;
 using VisualEditorApp.ViewModels.Tools;
@@ -296,6 +297,7 @@ namespace VisualEditorApp.Views.Documents
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error Initial Rendering: {ex.Message}");
+                MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "VIEW001", $"Error during initial rendering: {ex.Message}", "WorkspaceView.axaml"));
             }
         }
 

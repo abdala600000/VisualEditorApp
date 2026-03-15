@@ -50,18 +50,18 @@
 				</Menu.Styles>
 				<MenuItem Header="File">
 					<MenuItem Header="New">
-						<MenuItem Header="New Project..." />
-						<MenuItem Header="New Solution..." Command="{Binding OpenNewProjectCommand}"  />
-						<MenuItem Header="New File from Template..." />
+						<MenuItem Header="New File..." Command="{Binding NewFileCommand}" />
+						<MenuItem Header="New Folder..." Command="{Binding NewFolderCommand}" />
 					</MenuItem>
 					<MenuItem Header="_Open Solution..." InputGesture="Ctrl+O" Click="OnOpenSolutionClicked" />
-					<MenuItem Header="Open Recent" />
+					<MenuItem Header="Open Recent" Command="{Binding OpenRecentCommand}" />
 					<Separator Background="#333"/>
 					<MenuItem Header="_Save" Command="{Binding SaveFileCommand}" InputGesture="Ctrl+S" />
 					<MenuItem Header="Save _All" Command="{Binding SaveAllCommand}" InputGesture="Ctrl+Shift+S" />
 					<Separator Background="#333"/>
-					<MenuItem Header="Extensions" />
-					<MenuItem Header="Save Mode" />
+					<MenuItem Header="Extensions" Command="{Binding ManageExtensionsCommand}" />
+					<MenuItem Header="Save Mode" Command="{Binding ToggleSaveModeCommand}" />
+					<MenuItem Header="Close Solution" Command="{Binding CloseSolutionCommand}" />
 					<Separator Background="#333"/>
 					<MenuItem Header="E_xit" Command="{Binding ExitCommand}" InputGesture="Alt+F4" />
 				</MenuItem>
@@ -80,9 +80,11 @@
 							<PathIcon Data="{StaticResource IconBuild}" Width="14" Height="14"/>
 						</MenuItem.Icon>
 					</MenuItem>
+					<MenuItem Header="Build Solution" Command="{Binding BuildSolutionCommand}" />
+					<MenuItem Header="Rebuild Solution" Command="{Binding RebuildSolutionCommand}" />
 					<Separator />
-					<MenuItem Header="Rebuild Startup Project" />
-					<MenuItem Header="Clean Startup Project" />
+					<MenuItem Header="Rebuild Startup Project" Command="{Binding RebuildStartupProjectCommand}" />
+					<MenuItem Header="Clean Startup Project" Command="{Binding CleanStartupProjectCommand}" />
 				</MenuItem>
 
 				<MenuItem Header="_View">
@@ -106,9 +108,15 @@
 			<Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="8,6">
 
 				<StackPanel Orientation="Horizontal" Spacing="5">
-					<Button Content="📄" Background="Transparent" ToolTip.Tip="New File"/>
-					<Button Content="📂" Background="Transparent" ToolTip.Tip="Open Folder"/>
-					<Button Content="💾" Background="Transparent" ToolTip.Tip="Save"/>
+					<Button Command="{Binding NewFileCommand}" Background="Transparent" ToolTip.Tip="New File (Ctrl+N)">
+						<TextBlock Text="📄" FontSize="18"/>
+					</Button>
+					<Button Command="{Binding OpenNewProjectCommand}" Background="Transparent" ToolTip.Tip="Open Project/Folder (Ctrl+O)">
+						<TextBlock Text="📂" FontSize="18"/>
+					</Button>
+					<Button Command="{Binding SaveFileCommand}" Background="Transparent" ToolTip.Tip="Save (Ctrl+S)">
+						<TextBlock Text="💾" FontSize="18"/>
+					</Button>
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
 
@@ -129,7 +137,12 @@
 								  Foreground="#4CAF50"
 								  Width="18" Height="18"/>
 					</Button>
-					<Button Content="⏹️" Background="Transparent" ToolTip.Tip="Stop"/>
+					<Button Command="{Binding StopProjectCommand}"
+							ToolTip.Tip="Stop Execution"
+							Background="Transparent"
+							BorderThickness="0">
+						<TextBlock Text="⏹️" FontSize="18" Foreground="#F44336"/>
+					</Button>
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
 

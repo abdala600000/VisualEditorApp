@@ -8,6 +8,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using VisualEditorApp.ViewModels;
+using VisualEditorApp.Services;
 
 namespace VisualEditorApp.Views
 {
@@ -19,6 +20,7 @@ namespace VisualEditorApp.Views
         {
             InitializeComponent();
             ApplyPlatformInsets();
+            GlobalErrorListener.Register();
         }
 
         private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)

@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using System.Reflection;
 using VisualEditor.Core.Messages;
+using VisualEditor.Core.Models;
 
 
 namespace VisualEditor.Toolbox.Prop;
@@ -124,6 +125,7 @@ public partial class PropertiesView : UserControl
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to set property: {ex.Message}");
+            MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "PROP001", $"Failed to set property: {ex.Message}"));
         }
     }
 }

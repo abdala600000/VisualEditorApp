@@ -5,6 +5,8 @@ using System.Linq;
 using VisualEditorApp.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.Build.Construction;
+using VisualEditor.Core.Messages;
+using VisualEditor.Core.Models;
 
 namespace VisualEditorApp.Services
 {
@@ -187,7 +189,10 @@ namespace VisualEditorApp.Services
                 foreach (var file in dir.GetFiles()) { if (extensions.Contains(file.Extension)) results.Add(file.FullName); }
                 foreach (var subDir in dir.GetDirectories()) { SearchDirectory(subDir, extensions, excluded, results); }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBus.Send(SystemDiagnosticMessage.Create(VisualEditor.Core.Models.DiagnosticSeverity.Warning, "TREE001", $"Error searching directory {dir.FullName}: {ex.Message}"));
+            }
         }
 
         private static void AddDocumentsWithNesting(SolutionItemViewModel projectNode, string? projectDirectory, IEnumerable<string> filePaths)

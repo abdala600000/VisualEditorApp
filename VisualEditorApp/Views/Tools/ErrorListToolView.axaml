@@ -46,6 +46,7 @@
                 <DataGridTextColumn Header="Project" Binding="{Binding Project}" Width="150"/>
                 <DataGridTextColumn Header="File" Binding="{Binding File}" Width="120"/>
                 <DataGridTextColumn Header="Line" Binding="{Binding Line}" Width="60"/>
+                <DataGridTextColumn Header="Column" Binding="{Binding Column}" Width="60"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

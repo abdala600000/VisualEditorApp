@@ -1,6 +1,7 @@
-﻿namespace VisualEditorApp.Models
+namespace VisualEditor.Core.Models
 {
     public enum DiagnosticSeverity { Error, Warning, Info }
+    
     public class DiagnosticItem
     {
         public DiagnosticSeverity Severity { get; set; }
@@ -9,6 +10,7 @@
         public string Project { get; set; } = "";
         public string File { get; set; } = "";
         public int Line { get; set; }
-        public string ProjectPath { get; set; } = ""; // عشان لما ندوس مرتين يفتح الملف
+        public int Column { get; set; }
+        public string ProjectPath { get; set; } = ""; 
     }
 }

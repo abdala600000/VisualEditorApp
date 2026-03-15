@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using VisualEditor.Core.Models;
 using VisualEditor.Core.Services;
+using VisualEditor.Core.Messages;
 
 namespace VisualEditor.Core
 {
@@ -105,6 +106,9 @@ namespace VisualEditor.Core
             }
             catch (Exception ex)
             {
+                // إبلاغ قائمة الأخطاء فوراً بالخطأ التقني
+                MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "DESIGN003", $"XAML Render Error: {ex.Message}", filePath));
+
                 return new Border
                 {
                     Background = Avalonia.Media.Brushes.LightYellow,
@@ -161,7 +165,11 @@ namespace VisualEditor.Core
                         Assembly.Load(File.ReadAllBytes(dll));
                     }
                 }
-                catch { }
+                catch (Exception ex) 
+                { 
+                    System.Diagnostics.Debug.WriteLine($"Error loading DLL {dll}: {ex.Message}");
+                    MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Warning, "DLL001", $"Failed to load assembly {Path.GetFileName(dll)}: {ex.Message}"));
+                }
             }
         }
 
@@ -215,7 +223,10 @@ namespace VisualEditor.Core
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) 
+            { 
+               MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "SYS003", $"Error finding startup bin: {ex.Message}"));
+            }
             return null;
         }
 

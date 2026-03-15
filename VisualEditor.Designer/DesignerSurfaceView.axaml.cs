@@ -11,6 +11,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using VisualEditor.Designer.Services;
+using VisualEditor.Core.Messages;
+using VisualEditor.Core.Models;
 
 namespace VisualEditor.Designer
 {
@@ -657,6 +659,7 @@ namespace VisualEditor.Designer
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Failed to instantiate {typeName}: {ex.Message}");
+                        MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "DESIGN001", $"Failed to instantiate {typeName}: {ex.Message}"));
                         return;
                     }
 
@@ -835,7 +838,11 @@ namespace VisualEditor.Designer
 
                 DesignChanged?.Invoke(this, EventArgs.Empty);
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clone error: {ex.Message}"); }
+            catch (Exception ex) 
+            { 
+                System.Diagnostics.Debug.WriteLine($"Clone error: {ex.Message}");
+                MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "DESIGN002", $"Clone error: {ex.Message}"));
+            }
         }
 
         private void DeleteSelected()

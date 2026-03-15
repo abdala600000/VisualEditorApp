@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using VisualEditorApp.Models;
+using VisualEditor.Core.Models;
 
 namespace VisualEditorApp.Services
 {
@@ -60,10 +61,10 @@ namespace VisualEditorApp.Services
         // --- 🎯 السحر هنا: الانتقال للخطأ ---
         public void GoToError(DiagnosticItem error)
         {
-            if (string.IsNullOrEmpty(error.ProjectPath)) return;
+            if (string.IsNullOrEmpty(error.File)) return;
 
             // إرسال إشارة للمحرر (Editor) عشان يفتح الملف ويقف عند السطر
-            ErrorNavigationRequested?.Invoke(this, (error.ProjectPath, error.Line));
+            ErrorNavigationRequested?.Invoke(this, (error.File, error.Line));
         }
     }
 }
