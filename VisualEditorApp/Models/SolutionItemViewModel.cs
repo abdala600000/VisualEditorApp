@@ -16,7 +16,7 @@ namespace VisualEditorApp.Models
     {
         [ObservableProperty] private bool _isExpanded;
         [ObservableProperty] private bool _isSelected;
-
+        [ObservableProperty] private bool _isBuilding; // الخاصية الجديدة
         [ObservableProperty] private bool _isStartupProject;
 
         public SolutionItemViewModel(SolutionItemKind kind, string name, string? path)
@@ -58,17 +58,20 @@ namespace VisualEditorApp.Models
         {
             if (IsProjectNode && !string.IsNullOrEmpty(Path))
             {
-                System.Diagnostics.Debug.WriteLine($"Starting Build for: {Name}...");
-                // 1. تشغيل الـ Build (الأمر اللي عملناه قبل كده)
-                bool success = await RunDotnetCommandAsync("build", Path);
-
-                if (success)
+                try
                 {
-                    // 2. 📢 إرسال إشارة لكل الأجزاء المهتمة (زي المصمم) إن في DLLs جديدة جاهزة
-                    // بنستخدم Messenger بتاع CommunityToolkit
-                    WeakReferenceMessenger.Default.Send(new ProjectBuiltMessage(Path));
+                    IsBuilding = true; // 🚀 ابدأ التحميل
 
-                    System.Diagnostics.Debug.WriteLine("✅ Build Succeeded! Refreshing Designer...");
+                    bool success = await RunDotnetCommandAsync("build", Path);
+
+                    if (success)
+                    {
+                        WeakReferenceMessenger.Default.Send(new ProjectBuiltMessage(Path));
+                    }
+                }
+                finally
+                {
+                    IsBuilding = false; // 🏁 وقف التحميل (سواء نجح أو فشل)
                 }
             }
         }
@@ -78,7 +81,6 @@ namespace VisualEditorApp.Models
         {
             if (IsProjectNode && !string.IsNullOrEmpty(Path))
             {
-                System.Diagnostics.Debug.WriteLine($"Starting Clean for: {Name}...");
                 await RunDotnetCommandAsync("clean", Path);
             }
         }
@@ -160,9 +162,6 @@ namespace VisualEditorApp.Models
 
                         // 4. 🚀 تحديث المحرك فوراً عشان يحمل الـ DLLs الجديدة
                         LiveDesignerCompiler.UpdateStartupPath(latestBin.FullName);
-                       
-
-                        System.Diagnostics.Debug.WriteLine($"✅ Startup Project set to: {Name}");
                     }
                 }
             }

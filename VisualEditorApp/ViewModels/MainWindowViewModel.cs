@@ -1,18 +1,19 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.Mvvm.Controls;
-using VisualEditorApp.ViewModels.Tools;
-using VisualEditorApp.ViewModels.Documents;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using VisualEditorApp.Services;
+using VisualEditorApp.ViewModels.Documents;
+using VisualEditorApp.ViewModels.Tools;
 
 namespace VisualEditorApp.ViewModels
 {
@@ -156,6 +157,56 @@ namespace VisualEditorApp.ViewModels
                 // 🎯 فتح البرواز الذكي بدل الشاشات القديمة
                 var wizardWindow = new NewProjectWizardWindow();
                 await wizardWindow.ShowDialog(desktop.MainWindow);
+            }
+        }
+        [RelayCommand]
+        private async Task RunProject()
+        {
+            var startupProject = WorkspaceService.Instance.CurrentStartupProject;
+
+            if (startupProject == null || string.IsNullOrEmpty(startupProject.Path))
+            {
+                Debug.WriteLine("🔴 مفيش مشروع مختار كـ Startup! حدد مشروع كليك يمين أولاً.");
+                return;
+            }
+
+            try
+            {
+                Debug.WriteLine($"🚀 جاري تشغيل المشروع: {startupProject.Name}...");
+
+                // استخدام dotnet run مع تحديد مسار المشروع (.csproj)
+                // خيار --no-build بيخليه يفتح بسرعة لو إنت لسه عامل Build
+                string cmdArgs = $"run --project \"{startupProject.Path}\"";
+
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = cmdArgs,
+                    UseShellExecute = true, // 🎯 دي اللي هتفتح شاشة Console خارجية (سودة)
+                    CreateNoWindow = false
+                };
+
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"🔴 فشل تشغيل المشروع: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        private async Task BuildStartupProject()
+        {
+            var startupProject = WorkspaceService.Instance.CurrentStartupProject;
+
+            if (startupProject != null)
+            {
+                // بننادي دالة الـ Build اللي إنت مبرمجها جوه الـ ViewModel بتاع المشروع
+                await startupProject.BuildCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                Debug.WriteLine("⚠️ مفيش مشروع Startup مبني حالياً عشان أعمله Build.");
             }
         }
     }

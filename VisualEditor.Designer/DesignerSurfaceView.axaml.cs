@@ -60,9 +60,7 @@ namespace VisualEditor.Designer
                 }
                
             };
-            // 1. الاشتراك في حركة الماوس فوق منطقة الزوم
-            MyZoomBorder.PointerMoved += (s, e) => UpdateTracker(e);
-            MyZoomBorder.PointerExited += (s, e) => HideTrackers();
+            
             // 2. تحديث المربع في حالة تغيير حجم الشاشة نفسها
             this.LayoutUpdated += (s, e) => UpdateAdornerPosition();
             MyZoomBorder.DoubleTapped += (s, e) =>
@@ -236,8 +234,7 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
         {
-            // 1. تحديث المؤشر الملاحي دايماً (حتى لو مش بنسحب)
-            UpdateRulerTrackers(e);
+            
             if (_isDraggingControl && _selectedControls.Count > 0)
             {
                 var currentMousePos = e.GetPosition(DesignSurface);
@@ -664,55 +661,7 @@ namespace VisualEditor.Designer
                 LeftRuler.Children.Add(txt);
             }
         }
-
-        private void UpdateTracker(Avalonia.Input.PointerEventArgs e)
-        {
-            // الحصول على مكان الماوس بالنسبة للـ ZoomBorder (الشاشة)
-            var point = e.GetPosition(MyZoomBorder);
-
-            // إظهار المؤشرات
-            TopTracker.IsVisible = true;
-            LeftTracker.IsVisible = true;
-
-            // 🎯 تحريك مؤشر المسطرة العلوية
-            // بما أن الـ TopRuler والـ ZoomBorder في نفس الـ Column، فالـ X متطابق
-            Canvas.SetLeft(TopTracker, point.X);
-
-            // 🎯 تحريك مؤشر المسطرة الجانبية
-            // بما أن الـ LeftRuler والـ ZoomBorder في نفس الـ Row، فالـ Y متطابق
-            Canvas.SetTop(LeftTracker, point.Y);
-        }
-
-        private void HideTrackers()
-        {
-            TopTracker.IsVisible = false;
-            LeftTracker.IsVisible = false;
-        }
-        // دالة مساعدة لتحديث الخطوط الحمراء على المسطرة
-        private void UpdateRulerTrackers(PointerEventArgs e)
-        {
-            var screenPos = e.GetPosition(MyZoomBorder);
-            var matrix = MyZoomBorder.Matrix;
-            double zoom = matrix.M11;
-
-            if (TopTrackerGroup != null && LeftTrackerGroup != null)
-            {
-                TopTrackerGroup.IsVisible = true;
-                LeftTrackerGroup.IsVisible = true;
-
-                // 🎯 حساب الإحداثيات الحقيقية (Design Space)
-                double realX = Math.Round((screenPos.X - matrix.M31) / zoom);
-                double realY = Math.Round((screenPos.Y - matrix.M32) / zoom);
-
-                // تحديث النصوص
-                TopValueText.Text = realX.ToString();
-                LeftValueText.Text = realY.ToString();
-
-                // تحريك المجموعات (StackPanels)
-                Canvas.SetLeft(TopTrackerGroup, screenPos.X);
-                Canvas.SetTop(LeftTrackerGroup, screenPos.Y);
-            }
-        }
+ 
         private void HideAdorners()
         {
             // 1. إخفاء المربع الأزرق اللي فيه الـ Thumbs (TopLeft, BottomRight, etc.)

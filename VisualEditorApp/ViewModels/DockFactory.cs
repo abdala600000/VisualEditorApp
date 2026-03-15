@@ -23,6 +23,7 @@ namespace VisualEditorApp.ViewModels
             StructureTool = new StructureToolViewModel();
             PropertiesTool = new PropertiesToolViewModel();
             ProblemsTool = new ProblemsToolViewModel();
+            ErrorListTool= new ErrorListToolViewModel();
             TerminalTool = new TerminalToolViewModel();
         }
 
@@ -31,6 +32,8 @@ namespace VisualEditorApp.ViewModels
         public StructureToolViewModel StructureTool { get; }
         public PropertiesToolViewModel PropertiesTool { get; }
         public ProblemsToolViewModel ProblemsTool { get; }
+
+        public ErrorListToolViewModel ErrorListTool { get; }
         public TerminalToolViewModel TerminalTool { get; }
         public IDocumentDock? DocumentDock => _documentDock;
 
@@ -73,7 +76,7 @@ namespace VisualEditorApp.ViewModels
                 Alignment = Alignment.Bottom,
                 GripMode = GripMode.Visible,
                 ActiveDockable = ProblemsTool,
-                VisibleDockables = CreateList<IDockable>(ProblemsTool, TerminalTool)
+                VisibleDockables = CreateList<IDockable>(ErrorListTool,ProblemsTool, TerminalTool)
             };
 
             var mainHorizontal = new ProportionalDock

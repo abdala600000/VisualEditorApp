@@ -9,10 +9,18 @@ namespace VisualEditorApp.Services
         public static WorkspaceService Instance { get; } = new WorkspaceService();
 
         // 2. المسار الحالي للمشروع المفتوح
-        public string CurrentWorkspacePath { get; private set; }
+        public string CurrentWorkspacePath { get; private set; } = string.Empty;
 
         // 3. الإشارة المباشرة اللي السوليوشن اكسبلورر هيسمعها
-        public event EventHandler<string> WorkspaceLoaded;
+        public event EventHandler<string>? WorkspaceLoaded;
+
+        // 🎯 إشارة تغيير مشروع التشغيل (Startup)
+        public event EventHandler<SolutionItemViewModel>? StartupProjectChanged;
+
+        // 🎯 إشارة جديدة: للانتقال لسطر معين في ملف (مهمة للـ Error List)
+        public event EventHandler<(string Path, int Line)>? NavigationRequested;
+
+        public event EventHandler<(string Path, int Line)>? ErrorNavigationRequested; // للذهاب لسطر الخطأ
 
         // منغلق عشان محدش يقدر يعمل منه نسخ تانية بالغلط
         private WorkspaceService() { }
@@ -26,24 +34,36 @@ namespace VisualEditorApp.Services
             WorkspaceLoaded?.Invoke(this, path);
         }
 
-        
-        public void SetCurrentStartupProject(SolutionItemViewModel newStartup)
+        // 🎯 مرجع للمشروع الأخضر (Startup) الحالي
+        public SolutionItemViewModel? CurrentStartupProject { get; private set; }
+
+        public void SetCurrentStartupProject(SolutionItemViewModel project)
         {
-            // 1. لو في مشروع كان Startup قبل كده، بنطفيه (IsStartupProject = false)
-            if (_currentStartup != null)
-            {
-                _currentStartup.IsStartupProject = false;
-            }
+            // إطفاء القديم
+            if (CurrentStartupProject != null)
+                CurrentStartupProject.IsStartupProject = false;
 
-            // 2. بنفعل المشروع الجديد
-            _currentStartup = newStartup;
-            _currentStartup.IsStartupProject = true;
+            // تفعيل الجديد
+            CurrentStartupProject = project;
+            CurrentStartupProject.IsStartupProject = true;
 
-            // 3. (اختياري) لو عاوز تبلغ أجزاء تانية في البرنامج
-            StartupProjectChanged?.Invoke(this, newStartup);
+            // 💡 إطلاق الإشارة عشان أي جزء في البرنامج (زي التولبار) يعرف إن الـ Startup اتغير
+            StartupProjectChanged?.Invoke(this, project);
         }
 
-        private SolutionItemViewModel? _currentStartup;
-        public event EventHandler<SolutionItemViewModel>? StartupProjectChanged;
+        // 🎯 دالة جديدة: لفتح ملف عند سطر معين (لما تدوس دبل كليك على خطأ)
+        public void NavigateToFile(string filePath, int line)
+        {
+            NavigationRequested?.Invoke(this, (filePath, line));
+        }
+
+        // --- 🎯 السحر هنا: الانتقال للخطأ ---
+        public void GoToError(DiagnosticItem error)
+        {
+            if (string.IsNullOrEmpty(error.ProjectPath)) return;
+
+            // إرسال إشارة للمحرر (Editor) عشان يفتح الملف ويقف عند السطر
+            ErrorNavigationRequested?.Invoke(this, (error.ProjectPath, error.Line));
+        }
     }
 }

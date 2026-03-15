@@ -1,104 +1,94 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             xmlns:paz="clr-namespace:Avalonia.Controls.PanAndZoom;assembly=PanAndZoom"
-             x:Class="VisualEditor.Designer.DesignerSurfaceView">
-    
-    <UserControl.Resources>
-        <VisualBrush x:Key="GridBackgroundBrush" 
-                     TileMode="Tile" 
-                     SourceRect="0,0,40,40" 
-                     DestinationRect="0,0,40,40">
-            <VisualBrush.Visual>
-                <Canvas Width="40" Height="40">
-                    <Path Data="M 40 0 L 0 0 0 40" Stroke="#D0D0D0" StrokeThickness="1" />
-                    <Path Data="M 20 0 L 20 40 M 0 20 L 40 20" Stroke="#E8E8E8" StrokeThickness="0.5" />
-                </Canvas>
-            </VisualBrush.Visual>
-        </VisualBrush>
-    </UserControl.Resources>
+			 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+			 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+			 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+			 mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+			 xmlns:paz="clr-namespace:Avalonia.Controls.PanAndZoom;assembly=PanAndZoom"
+			 x:Class="VisualEditor.Designer.DesignerSurfaceView">
 
-    <UserControl.Styles>
-        <Style Selector="Thumb.ResizerThumb">
-            <Setter Property="Width" Value="10"/>
-            <Setter Property="Height" Value="10"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Background="White" BorderBrush="DodgerBlue" BorderThickness="1"/>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-    </UserControl.Styles>
+	<UserControl.Resources>
+		<VisualBrush x:Key="GridBackgroundBrush"
+					 TileMode="Tile"
+					 SourceRect="0,0,40,40"
+					 DestinationRect="0,0,40,40">
+			<VisualBrush.Visual>
+				<Canvas Width="40" Height="40">
+					<Path Data="M 40 0 L 0 0 0 40" Stroke="#D0D0D0" StrokeThickness="1" />
+					<Path Data="M 20 0 L 20 40 M 0 20 L 40 20" Stroke="#E8E8E8" StrokeThickness="0.5" />
+				</Canvas>
+			</VisualBrush.Visual>
+		</VisualBrush>
+	</UserControl.Resources>
 
-    <Grid RowDefinitions="25,*" ColumnDefinitions="25,*">
-        
-        <Border Grid.Row="0" Grid.Column="0" Background="#E0E0E0" BorderBrush="#D0D0D0" BorderThickness="0,0,1,1"/>
+	<UserControl.Styles>
+		<Style Selector="Thumb.ResizerThumb">
+			<Setter Property="Width" Value="10"/>
+			<Setter Property="Height" Value="10"/>
+			<Setter Property="Template">
+				<ControlTemplate>
+					<Border Background="White" BorderBrush="DodgerBlue" BorderThickness="1"/>
+				</ControlTemplate>
+			</Setter>
+		</Style>
+	</UserControl.Styles>
 
-       <Canvas Grid.Row="0" Grid.Column="1" Background="#F5F5F5" Name="TopRulerContainer" ClipToBounds="True">
-    <Canvas Name="TopRuler" />
-  <StackPanel Name="TopTrackerGroup" IsVisible="False">
-        <Line Name="TopTracker" StartPoint="0,0" EndPoint="0,25" Stroke="Red" StrokeThickness="1" />
-        <Border Background="Red" CornerRadius="2" Padding="2,0" Margin="-15,-2,0,0">
-            <TextBlock Name="TopValueText" Text="0" FontSize="8" Foreground="White" />
-        </Border>
-    </StackPanel>
-</Canvas>
+	<Grid RowDefinitions="25,*" ColumnDefinitions="25,*">
 
-<Canvas Grid.Row="1" Grid.Column="0" Background="#F5F5F5" Name="LeftRulerContainer" ClipToBounds="True">
-    <Canvas Name="LeftRuler" />
-   <StackPanel Name="LeftTrackerGroup" IsVisible="False" Orientation="Horizontal">
-        <Line Name="LeftTracker" StartPoint="0,0" EndPoint="25,0" Stroke="Red" StrokeThickness="1" />
-        <Border Background="Red" CornerRadius="2" Padding="2,0" Margin="0,-10,0,0" VerticalAlignment="Top">
-            <TextBlock Name="LeftValueText" Text="0" FontSize="8" Foreground="White" />
-        </Border>
-    </StackPanel>
-</Canvas>
+		<Border Grid.Row="0" Grid.Column="0" Background="#E0E0E0" BorderBrush="#D0D0D0" BorderThickness="0,0,1,1"/>
 
-        <ScrollViewer Grid.Row="1" Grid.Column="1" 
-                      HorizontalScrollBarVisibility="Auto" 
-                      VerticalScrollBarVisibility="Auto">
-            <Grid Background="#F0F0F0" Name="DesignerContainer">
-                <paz:ZoomBorder x:Name="MyZoomBorder" 
-                                Stretch="None" 
-                                ZoomSpeed="1.2" 
-                                PanButton="Middle"
-                                EnableConstrains="False"
-                                ClipToBounds="True" 
-                                Focusable="True"
-                                VerticalAlignment="Stretch" 
-                                HorizontalAlignment="Stretch"
-                                Background="Transparent">
-                    
-                    <Border x:Name="DesignSurfaceWrapper"
-                            Width="1920" Height="1080"
-                            Background="{StaticResource GridBackgroundBrush}"
-                            BoxShadow="0 10 30 0 #40000000"> 
-                        
-                        <ContentControl x:Name="DesignSurface" 
-                                        HorizontalAlignment="Stretch" 
-                                        VerticalAlignment="Stretch" />
-                    </Border>
-                </paz:ZoomBorder>
+		<Canvas Grid.Row="0" Grid.Column="1" Background="#F5F5F5" Name="TopRulerContainer" ClipToBounds="True">
+			<Canvas Name="TopRuler" />
+			 
+		</Canvas>
 
-                <Canvas Name="AdornerCanvas" IsHitTestVisible="False">
-                   <Rectangle Name="SelectionBox" 
-               Fill="#332196F3" 
-               Stroke="DodgerBlue" 
-               StrokeThickness="1" 
-               StrokeDashArray="4,2" 
-               IsVisible="False" />
-                    <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
-                        <Grid>
-                            <Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-5,-5,0,0" DragDelta="Resize_DragDelta" />
-                            <Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" DragDelta="Resize_DragDelta" />
-                            <Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-5,0,0,-5" DragDelta="Resize_DragDelta" />
-                            <Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-5,-5" DragDelta="Resize_DragDelta" />
-                        </Grid>
-                    </Border>
-                </Canvas>
-            </Grid>
-        </ScrollViewer>
-    </Grid>
+		<Canvas Grid.Row="1" Grid.Column="0" Background="#F5F5F5" Name="LeftRulerContainer" ClipToBounds="True">
+			<Canvas Name="LeftRuler" />
+			 
+		</Canvas>
+
+		<ScrollViewer Grid.Row="1" Grid.Column="1"
+					  HorizontalScrollBarVisibility="Auto"
+					  VerticalScrollBarVisibility="Auto">
+			<Grid Background="#F0F0F0" Name="DesignerContainer">
+				<paz:ZoomBorder x:Name="MyZoomBorder"
+								Stretch="None"
+								ZoomSpeed="1.2"
+								PanButton="Middle"
+								EnableConstrains="False"
+								ClipToBounds="True"
+								Focusable="True"
+								VerticalAlignment="Stretch"
+								HorizontalAlignment="Stretch"
+								Background="Transparent">
+
+					<Border x:Name="DesignSurfaceWrapper"
+							Width="1920" Height="1080"
+							Background="{StaticResource GridBackgroundBrush}"
+							BoxShadow="0 10 30 0 #40000000">
+
+						<ContentControl x:Name="DesignSurface"
+										HorizontalAlignment="Stretch"
+										VerticalAlignment="Stretch" />
+					</Border>
+				</paz:ZoomBorder>
+
+				<Canvas Name="AdornerCanvas" IsHitTestVisible="False">
+					<Rectangle Name="SelectionBox"
+							   Fill="#332196F3"
+							   Stroke="DodgerBlue"
+							   StrokeThickness="1"
+							   StrokeDashArray="4,2"
+							   IsVisible="False" />
+					<Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
+						<Grid>
+							<Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-5,-5,0,0" DragDelta="Resize_DragDelta" />
+							<Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" DragDelta="Resize_DragDelta" />
+							<Thumb Name="BottomLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-5,0,0,-5" DragDelta="Resize_DragDelta" />
+							<Thumb Name="BottomRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-5,-5" DragDelta="Resize_DragDelta" />
+						</Grid>
+					</Border>
+				</Canvas>
+			</Grid>
+		</ScrollViewer>
+	</Grid>
 </UserControl>

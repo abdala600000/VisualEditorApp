@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:tools="using:VisualEditorApp.ViewModels.Tools"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:VisualEditorApp.ViewModels"
+             x:DataType="tools:ErrorListToolViewModel"
+             x:Class="VisualEditorApp.Views.Tools.ErrorListToolView">
+ <Grid RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Background="{DynamicResource RiderToolbarBrush}" Margin="5">
+            <ComboBox SelectedIndex="0" Width="150">
+                <ComboBoxItem>Entire Solution</ComboBoxItem>
+                <ComboBoxItem>Current Project</ComboBoxItem>
+            </ComboBox>
+
+            <Separator Width="1" Height="20" Background="Gray"/>
+
+            <ToggleButton IsChecked="{Binding ShowErrors}" Command="{Binding RefreshFiltersCommand}" Theme="{StaticResource RiderToggleButton}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <PathIcon Data="{StaticResource ErrorIcon}" Foreground="Red" Width="14"/>
+                    <TextBlock Text="{Binding ErrorCount}"/>
+                    <TextBlock Text="Errors"/>
+                </StackPanel>
+            </ToggleButton>
+
+            <ToggleButton IsChecked="{Binding ShowWarnings}" Command="{Binding RefreshFiltersCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <PathIcon Data="{StaticResource WarningIcon}" Foreground="Orange" Width="14"/>
+                    <TextBlock Text="{Binding WarningCount}"/>
+                    <TextBlock Text="Warnings"/>
+                </StackPanel>
+            </ToggleButton>
+            
+            <TextBox Watermark="Search Error List" Width="200" HorizontalAlignment="Right"/>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" ItemsSource="{Binding FilteredDiagnostics}" 
+          SelectedItem="{Binding SelectedError}"
+          DoubleTapped="OnDataGridDoubleTapped"
+                  AutoGenerateColumns="False" IsReadOnly="True"
+                  GridLinesVisibility="All">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="80"/>
+                <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
+                <DataGridTextColumn Header="Project" Binding="{Binding Project}" Width="150"/>
+                <DataGridTextColumn Header="File" Binding="{Binding File}" Width="120"/>
+                <DataGridTextColumn Header="Line" Binding="{Binding Line}" Width="60"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

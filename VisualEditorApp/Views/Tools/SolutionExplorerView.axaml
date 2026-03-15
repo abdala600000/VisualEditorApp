@@ -22,6 +22,11 @@
 			<Setter Property="Foreground" Value="#4CAF50" />
 			<Setter Property="FontWeight" Value="Bold" />
 		</Style>
+		 <Style Selector="ProgressBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinHeight" Value="2" />
+    </Style>
 	</UserControl.Styles>
 
 	<Border Background="{DynamicResource RiderPanelBrush}">
@@ -60,9 +65,15 @@
 								  Classes.startup="{Binding IsStartupProject}"
 								  Foreground="{DynamicResource RiderMutedTextBrush}" />
 
-						<TextBlock Text="{Binding Name}"
-
-								   VerticalAlignment="Center"/>
+						<TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+						<ProgressBar IsVisible="{Binding IsBuilding}"
+                     IsIndeterminate="True"
+                     Width="40"
+                     Height="2"
+                     VerticalAlignment="Center"
+                     Margin="5,0,0,0"
+                     Foreground="#4CAF50" />
+								   
 
 					</StackPanel>
 

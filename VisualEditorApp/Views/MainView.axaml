@@ -18,6 +18,16 @@
 		<StreamGeometry x:Key="IconSave">M3 3H12L14 5V13H3V3ZM5 5V7H11V5H5Z</StreamGeometry>
 		<StreamGeometry x:Key="IconRun">M5 4L12 8L5 12V4Z</StreamGeometry>
 	</UserControl.Resources>
+	<UserControl.KeyBindings>
+        <KeyBinding Gesture="F5" 
+                    Command="{Binding RunProjectCommand}" />
+        
+        <KeyBinding Gesture="Ctrl+Shift+B" 
+                    Command="{Binding BuildStartupProjectCommand}" />
+        
+        <KeyBinding Gesture="Ctrl+S" 
+                    Command="{Binding SaveAllCommand}" />
+    </UserControl.KeyBindings>
 	<Grid RowDefinitions="Auto,Auto,*,Auto">
 		<Grid Grid.Row="0"
 			  ColumnDefinitions="Auto,*"
@@ -80,26 +90,7 @@
 				BorderBrush="{DynamicResource RiderBorderBrush}"
 				BorderThickness="0,0,0,1">
 			<Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" Margin="8,6">
-				<!--  <StackPanel Orientation="Horizontal" Spacing="8">
-				<Button x:Name="OpenSolutionButton" ToolTip.Tip="Open Solution" Click="OnOpenSolutionClicked">
-				<StackPanel Orientation="Horizontal" Spacing="6">
-				<PathIcon Data="{StaticResource IconOpen}" Width="14" Height="14" />
-				<TextBlock Text="Open" />
-				</StackPanel>
-				</Button>
-				<Button ToolTip.Tip="Save" Command="{Binding SaveFileCommand}">
-				<StackPanel Orientation="Horizontal" Spacing="6">
-				<PathIcon Data="{StaticResource IconSave}" Width="14" Height="14" />
-				<TextBlock Text="Save" />
-				</StackPanel>
-				</Button>
-				<Button ToolTip.Tip="Run" IsEnabled="False">
-				<StackPanel Orientation="Horizontal" Spacing="6">
-				<PathIcon Data="{StaticResource IconRun}" Width="14" Height="14" />
-				<TextBlock Text="Run" />
-				</StackPanel>
-				</Button>
-				</StackPanel>-->
+				 
 				<StackPanel Orientation="Horizontal" Spacing="5">
 					<Button Content="📄" Background="Transparent" ToolTip.Tip="New File"/>
 					<Button Content="📂" Background="Transparent" ToolTip.Tip="Open Folder"/>
@@ -107,7 +98,14 @@
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
 
-					<Button Content="▶️" Background="Transparent" ToolTip.Tip="Run"/>
+					<Button Command="{Binding RunProjectCommand}"
+        ToolTip.Tip="Run Startup Project (F5)"
+        Background="Transparent"
+        BorderThickness="0">
+    <PathIcon Data="{StaticResource IconRun}" 
+              Foreground="#4CAF50" 
+              Width="18" Height="18"/>
+</Button>
 					<Button Content="⏹️" Background="Transparent" ToolTip.Tip="Stop"/>
 
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
