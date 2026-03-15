@@ -1,7 +1,6 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 using VisualEditor.Core.Messages;
 
@@ -19,10 +18,10 @@ namespace VisualEditor.Toolbox.Outline
         public DocumentOutlineViewModel()
         {
             // 🎧 تسجيل الشجرة للاستماع لأي تحديث في التصميم
-            WeakReferenceMessenger.Default.Register<DesignTreeUpdatedMessage>(this, (recipient, message) =>
+            MessageBus.DesignTreeUpdated += (message) =>
             {
                 UpdateTree(message.RootControl);
-            });
+            };
 
 
         }

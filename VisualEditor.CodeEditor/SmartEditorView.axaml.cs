@@ -23,6 +23,8 @@ namespace VisualEditor.CodeEditor
 
         // 👈 الحدث (Event) السحري اللي هنكلم بيه البرنامج بره
         public event EventHandler<string> XamlTextChanged;
+        
+        public string Text => _editor?.Text ?? "";
 
         public SmartEditorView()
         {

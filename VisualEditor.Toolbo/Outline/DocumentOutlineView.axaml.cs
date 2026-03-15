@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
-using CommunityToolkit.Mvvm.Messaging;
 using System.Xml.Linq;
 using VisualEditor.Core.Messages;
 using VisualEditor.Toolbox.Prop;
@@ -27,7 +26,7 @@ public partial class DocumentOutlineView : UserControl
         {
             if (selectedNode.RelatedControl != null)
             {
-                WeakReferenceMessenger.Default.Send(new ControlSelectedMessage(selectedNode.RelatedControl, "Outline"));
+                MessageBus.Send(new ControlSelectedMessage(selectedNode.RelatedControl, "Outline"));
 
             }
         }

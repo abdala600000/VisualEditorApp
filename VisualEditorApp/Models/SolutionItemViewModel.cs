@@ -1,6 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -66,7 +65,7 @@ namespace VisualEditorApp.Models
 
                     if (success)
                     {
-                        WeakReferenceMessenger.Default.Send(new ProjectBuiltMessage(Path));
+                        MessageBus.Send(new ProjectBuiltMessage(Path));
                     }
                 }
                 finally

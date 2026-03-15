@@ -1,18 +1,20 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
-using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Xml;
 using VisualEditor.CodeEditor;
 using VisualEditor.Core;
 using VisualEditor.Core.Messages;
 using VisualEditor.Designer;
+using VisualEditorApp.ViewModels;
 using VisualEditorApp.ViewModels.Documents;
+using VisualEditorApp.ViewModels.Tools;
+using System.Linq;
 
 namespace VisualEditorApp.Views.Documents
 {
@@ -21,6 +23,7 @@ namespace VisualEditorApp.Views.Documents
         private bool _isUpdating = false;
 
         public static WorkspaceView? Instance { get; private set; }
+        private EventHandler<(System.Reflection.PropertyInfo Prop, object? Value, Avalonia.Controls.Control Target)>? _propertySub;
 
         public WorkspaceView()
         {
@@ -37,16 +40,18 @@ namespace VisualEditorApp.Views.Documents
                 }
             };
 
-            WeakReferenceMessenger.Default.Register<ControlSelectedMessage>(this, (recipient, message) =>
+            MessageBus.ControlSelected += (message) =>
             {
                 if (message.SenderName == "Outline" && message.SelectedControl != null)
                 {
-
-                    MyDesignSurface?.SelectControl(message.SelectedControl);
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        MyDesignSurface?.SelectControl(message.SelectedControl);
+                    });
                 }
-            });
+            };
             // 👂 الاشتراك في إشارة الـ Build
-            WeakReferenceMessenger.Default.Register<ProjectBuiltMessage>(this, (r, m) =>
+            MessageBus.ProjectBuilt += (m) =>
             {
                 // لما الإشارة تيجي، بنطلب من المصمم يعيد الرسم
                 Dispatcher.UIThread.InvokeAsync(() =>
@@ -54,15 +59,38 @@ namespace VisualEditorApp.Views.Documents
                     LiveDesignerCompiler.Refresh(); // تحميل الـ DLLs الجديدة
                     TriggerRender(); // نده دالة الرسم بتاعتك تانى
                 });
-            });
+            };
         }
         private void TriggerRender()
         {
             // الكود اللي بياخد الـ Text الحالي ويبعته للـ RenderLiveXaml
             // this.ResultControl = LiveDesignerCompiler.RenderLiveXaml(this.Text, this.FilePath);
         }
+        
+        // ربط نافذة الخصائص بالمصمم
+        private void HookPropertiesWindow()
+        {
+            MessageBus.PropertyChanged += (message) =>
+            {
+                // Patch property values instantly
+                if (MyCodeEditor != null && message.Target != null && message.Property != null)
+                {
+                    string propName = message.Property.Name;
+                    string newVal = message.Value?.ToString() ?? "";
+                    string currentXml = MyCodeEditor.Text;
+
+                    string newXml = XamlDOMPatcher.PatchProperty(currentXml, message.Target, propName, newVal);
+                    if (currentXml != newXml)
+                    {
+                        MyCodeEditor.SetXamlText(newXml);
+                    }
+                }
+            };
+        }
+
         private void InitializeControls()
         {
+            HookPropertiesWindow();
 
 
 
@@ -121,19 +149,39 @@ namespace VisualEditorApp.Views.Documents
 
         private void MyDesignSurface_DesignChanged(object? sender, EventArgs e)
         {
-
-
-
             if (_isUpdating || MyDesignSurface == null || MyCodeEditor == null) return;
             _isUpdating = true;
 
             try
             {
-                var rootControl = MyDesignSurface.RootDesign;
-                if (rootControl != null)
+                var designer = MyDesignSurface;
+                if (designer != null)
                 {
-                    //string generatedXaml = XamlGenerator.GenerateXaml(rootControl);
-                    //MyCodeEditor.SetXamlText(generatedXaml);
+                    // get selected controls, typically just 1 in DesignerSurfaceView
+                    var field = typeof(VisualEditor.Designer.DesignerSurfaceView).GetField("_selectedControl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (field?.GetValue(designer) is Control targetControl)
+                    {
+                        string xml = MyCodeEditor.Text;
+                        
+                        // Patch position and size
+                        if (targetControl.Parent is Canvas)
+                        {
+                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Left", Canvas.GetLeft(targetControl).ToString());
+                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Top", Canvas.GetTop(targetControl).ToString());
+                        }
+                        else
+                        {
+                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Margin", $"{targetControl.Margin.Left},{targetControl.Margin.Top},0,0");
+                        }
+                        
+                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Width", targetControl.Width.ToString());
+                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Height", targetControl.Height.ToString());
+                        
+                        if (xml != MyCodeEditor.Text)
+                        {
+                            MyCodeEditor.SetXamlText(xml);
+                        }
+                    }
                 }
             }
             finally
@@ -167,7 +215,7 @@ namespace VisualEditorApp.Views.Documents
         {
             if (selectedControl != null)
             {
-                WeakReferenceMessenger.Default.Send(new ControlSelectedMessage(selectedControl, "Properties"));
+                MessageBus.Send(new ControlSelectedMessage(selectedControl, "Properties"));
             }
         }
 
@@ -255,7 +303,7 @@ namespace VisualEditorApp.Views.Documents
                     if (finalElementToDisplay != null)
                     {
                         MyDesignSurface.LoadDesign(finalElementToDisplay);
-                        WeakReferenceMessenger.Default.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
+                        MessageBus.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
                     }
                 }
             }

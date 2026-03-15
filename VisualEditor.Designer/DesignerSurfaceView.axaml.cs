@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
 using Avalonia.Controls.Primitives;
@@ -605,7 +605,17 @@ namespace VisualEditor.Designer
                         DesignSurface.Content = new Canvas { Background = Brushes.Transparent };
 
                     // 2. إنشاء نسخة جديدة من الكنترول (Reflection)
-                    var newControl = (Control)Activator.CreateInstance(controlType)!;
+                    Control? newControl = null;
+                    try
+                    {
+                        newControl = (Control)Activator.CreateInstance(controlType)!;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to instantiate {typeName}: {ex.Message}");
+                        return;
+                    }
+
                     newControl.Width = 100;
                     newControl.Height = 30;
 
@@ -637,6 +647,10 @@ namespace VisualEditor.Designer
                     {
                         targetContentControl.Content = newControl;
                     }
+                    else if (targetContainer is Decorator decoratorTarget)
+                    {
+                        decoratorTarget.Child = newControl;
+                    }
 
                     // 5. تحديد الكنترول الجديد فوراً عشان المربع الأزرق يظهر عليه
                     SelectControl(newControl);
@@ -657,6 +671,7 @@ namespace VisualEditor.Designer
             {
                 if (current is Panel) return current;
                 if (current is ContentControl cc && cc.Content == null && current != DesignSurface.Content) return current;
+                if (current is Decorator dec && dec.Child == null && current != DesignSurface.Content) return current;
                 current = current.Parent as Control;
             }
             return DesignSurface.Content as Control;

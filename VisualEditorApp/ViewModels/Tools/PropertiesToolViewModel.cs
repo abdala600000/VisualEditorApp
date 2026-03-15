@@ -10,10 +10,17 @@ namespace VisualEditorApp.ViewModels.Tools
         [ObservableProperty] private string _itemKind = string.Empty;
         [ObservableProperty] private string _itemPath = string.Empty;
 
+        public event System.EventHandler<(System.Reflection.PropertyInfo Prop, object? Value, Avalonia.Controls.Control Target)>? PropertyChangedByUser;
+
         public PropertiesToolViewModel()
         {
             Id = "Properties";
             Title = "Properties";
+        }
+
+        public void RaisePropertyChangedByUser(System.Reflection.PropertyInfo prop, object? value, Avalonia.Controls.Control target)
+        {
+            PropertyChangedByUser?.Invoke(this, (prop, value, target));
         }
 
         public void UpdateSelection(SolutionItemViewModel? item)

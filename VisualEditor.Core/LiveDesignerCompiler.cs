@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
@@ -86,7 +86,7 @@ namespace VisualEditor.Core
                 if (!string.IsNullOrEmpty(projName))
                 {
                     // بنقوله دور على الموارد (avares) في المشروع بتاع المستخدم
-                    fileUri = new Uri($"avares://{projName}");
+                    fileUri = new Uri($"avares://{projName}/");
                 }
 
                 // 4. الحصول على الـ Anchor من المشروع الأساسي
@@ -185,8 +185,15 @@ namespace VisualEditor.Core
 
                 foreach (var projFile in projectFiles)
                 {
-                    // قراءة أول 1000 حرف من الملف (كافي جداً لمعرفة الـ OutputType) لسرعة الأداء
-                    string header = File.ReadLines(projFile).Take(30).Aggregate("", (a, b) => a + b);
+                    // استخدام FileShare.ReadWrite لمنع الـ File Locking
+                    string header = "";
+                    using (var fs = new FileStream(projFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var reader = new StreamReader(fs))
+                    {
+                        char[] buffer = new char[1000];
+                        int bytesRead = reader.Read(buffer, 0, buffer.Length);
+                        header = new string(buffer, 0, bytesRead);
+                    }
 
                     if (header.Contains("<OutputType>WinExe</OutputType>") ||
                         header.Contains("<OutputType>Exe</OutputType>"))

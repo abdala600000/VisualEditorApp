@@ -1,7 +1,6 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using CommunityToolkit.Mvvm.Messaging;
 using System.Reflection;
 using VisualEditor.Core.Messages;
 
@@ -14,17 +13,20 @@ public partial class PropertiesView : UserControl
     private bool _isUpdatingFromCode = false;
     private bool _isAlphabetical = false;
     private List<PropertyItem> _rawProperties = new(); // المصدر الأصلي
+    
+    // الحدث اللي هنبعت بيه تعديلات الخصائص للمطور
+    public event EventHandler<(PropertyInfo Prop, object? Value, Control Target)>? PropertyChangedByUser;
 
     public PropertiesView()
     {
         InitializeComponent();
 
         // 🎧 الرادار: النافذة دي قاعدة بتسمع، أول ما حد يحدد كنترول، هتاخده وتعرض خصائصه
-        WeakReferenceMessenger.Default.Register<ControlSelectedMessage>(this, (recipient, message) =>
+        MessageBus.ControlSelected += (message) =>
         {
             // استدعاء دالتك الأصلية لعرض الخصائص
             SetSelectedElement(message.SelectedControl);
-        });
+        };
 
     }
 
@@ -101,5 +103,27 @@ public partial class PropertiesView : UserControl
         if (n.Contains("color") || n.Contains("brush") || n.Contains("background") || n.Contains("opacity")) return "Appearance";
         if (n.Contains("text") || n.Contains("font") || n.Contains("content")) return "Content";
         return "Common";
+    }
+
+    // تُستدعى عندما يقوم المستخدم بتعديل قيمة من الـ UI داخل نافذة الخصائص
+    public void NotifyPropertyChanged(PropertyItem item, object? newValue)
+    {
+        if (_isUpdatingFromCode || item.Target == null || item.Info == null) return;
+        
+        try
+        {
+            // نأكد التغيير على المستوى البرمجي (عشان ينعكس في الشاشة فوراً)
+            item.Info.SetValue(item.Target, newValue);
+            item.Value = newValue;
+
+            // نبلغ البرنامج الرئيسي عشان يحولها لكود XML
+            PropertyChangedByUser?.Invoke(this, (item.Info, newValue, item.Target));
+
+            MessageBus.Send(new DesignChangedMessage());
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to set property: {ex.Message}");
+        }
     }
 }

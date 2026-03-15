@@ -1,6 +1,5 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Media;
-using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.ComponentModel;
 using System.Reflection;
@@ -51,7 +50,7 @@ namespace VisualEditor.Toolbox.Prop
                     Info.SetValue(Target, convertedValue);
 
                     // 3. 📢 نضرب جرس الإنذار: "يا ديزاينر، حدث الكود!"
-                    WeakReferenceMessenger.Default.Send(new DesignChangedMessage());
+                    MessageBus.Send(new DesignChangedMessage());
                 }
             }
             catch

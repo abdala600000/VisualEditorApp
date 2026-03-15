@@ -16,14 +16,17 @@ using System.Threading.Tasks;
 using XamlToCSharpGenerator.LanguageService;
 using XamlToCSharpGenerator.LanguageService.Models;
 
-namespace VisualEditor.CodeEditor; 
+namespace VisualEditor.CodeEditor;
 
 public sealed class AxamlTextEditor : TextEditor
 {
+    public static readonly DirectProperty<AxamlTextEditor, string> TextProperty =
+        AvaloniaProperty.RegisterDirect<AxamlTextEditor, string>(
+            nameof(Text),
+            editor => editor.Text,
+            (editor, value) => editor.Text = value ?? string.Empty);
 
-    // 👈 الخاصية السحرية اللي بتجبر أفلونيا تلبسه الستايل الأصلي تلقائياً
     protected override Type StyleKeyOverride => typeof(AvaloniaEdit.TextEditor);
-
     public static readonly StyledProperty<string?> DocumentUriProperty =
         AvaloniaProperty.Register<AxamlTextEditor, string?>(nameof(DocumentUri));
 
@@ -40,6 +43,8 @@ public sealed class AxamlTextEditor : TextEditor
     private CompletionWindow? _completionWindow;
     private DispatcherTimer? _analysisDebounce;
     private bool _documentOpened;
+    private string? _openedDocumentUri;
+    private string _text = string.Empty;
     private int _documentVersion;
     private ImmutableArray<LanguageServiceDiagnostic> _diagnostics = ImmutableArray<LanguageServiceDiagnostic>.Empty;
     private CancellationTokenSource? _analysisCts;
@@ -70,6 +75,12 @@ public sealed class AxamlTextEditor : TextEditor
         };
         _analysisDebounce.Tick += OnAnalysisDebounceTick;
 
+    }
+
+    public new string Text
+    {
+        get => _text;
+        set => SetEditorText(value ?? string.Empty);
     }
 
     public string? DocumentUri
@@ -124,18 +135,25 @@ public sealed class AxamlTextEditor : TextEditor
         _analysisCts?.Dispose();
         _analysisCts = null;
 
-        if (!string.IsNullOrWhiteSpace(DocumentUri))
+        if (!string.IsNullOrWhiteSpace(_openedDocumentUri))
         {
-            _engine.CloseDocument(DocumentUri!);
+            _engine.CloseDocument(_openedDocumentUri);
         }
 
         _documentOpened = false;
+        _openedDocumentUri = null;
         _completionWindow?.Close();
         _completionWindow = null;
     }
 
     private void OnEditorTextChanged(object? sender, EventArgs e)
     {
+        var currentText = base.Text ?? string.Empty;
+        if (!string.Equals(_text, currentText, StringComparison.Ordinal))
+        {
+            SetAndRaise(TextProperty, ref _text, currentText);
+        }
+
         _analysisDebounce?.Stop();
         _analysisDebounce?.Start();
     }
@@ -146,10 +164,24 @@ public sealed class AxamlTextEditor : TextEditor
         _ = AnalyzeNowAsync();
     }
 
+    private void SetEditorText(string value)
+    {
+        if (string.Equals(_text, value, StringComparison.Ordinal) &&
+            string.Equals(base.Text, value, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        base.Text = value;
+        SetAndRaise(TextProperty, ref _text, value);
+    }
+
     private async Task EnsureDocumentOpenAndAnalyzeAsync()
     {
-        if (string.IsNullOrWhiteSpace(DocumentUri))
+        var currentDocumentUri = DocumentUri;
+        if (string.IsNullOrWhiteSpace(currentDocumentUri))
         {
+            CloseOpenedDocument();
             return;
         }
 
@@ -157,17 +189,23 @@ public sealed class AxamlTextEditor : TextEditor
         _analysisCts?.Dispose();
         _analysisCts = new CancellationTokenSource();
 
+        if (!string.Equals(_openedDocumentUri, currentDocumentUri, StringComparison.Ordinal))
+        {
+            CloseOpenedDocument();
+        }
+
         if (!_documentOpened)
         {
             _documentVersion = 1;
             var diagnostics = await _engine.OpenDocumentAsync(
-                DocumentUri!,
+                currentDocumentUri,
                 Text ?? string.Empty,
                 version: _documentVersion,
                 CreateOptions(),
                 _analysisCts.Token).ConfigureAwait(false);
             await Dispatcher.UIThread.InvokeAsync(() => Diagnostics = diagnostics);
             _documentOpened = true;
+            _openedDocumentUri = currentDocumentUri;
             return;
         }
 
@@ -176,8 +214,10 @@ public sealed class AxamlTextEditor : TextEditor
 
     private async Task AnalyzeNowAsync()
     {
-        if (string.IsNullOrWhiteSpace(DocumentUri))
+        var currentDocumentUri = DocumentUri;
+        if (string.IsNullOrWhiteSpace(currentDocumentUri))
         {
+            CloseOpenedDocument();
             return;
         }
 
@@ -186,7 +226,7 @@ public sealed class AxamlTextEditor : TextEditor
         _analysisCts = new CancellationTokenSource();
 
         var diagnostics = await _engine.UpdateDocumentAsync(
-            DocumentUri!,
+            currentDocumentUri,
             Text ?? string.Empty,
             version: ++_documentVersion,
             CreateOptions(),
@@ -194,6 +234,7 @@ public sealed class AxamlTextEditor : TextEditor
 
         await Dispatcher.UIThread.InvokeAsync(() => Diagnostics = diagnostics);
         _documentOpened = true;
+        _openedDocumentUri = currentDocumentUri;
     }
 
     private async Task ShowCompletionAsync()
@@ -277,6 +318,18 @@ public sealed class AxamlTextEditor : TextEditor
     {
         return new XamlLanguageServiceOptions(WorkspaceRoot);
     }
+
+    private void CloseOpenedDocument()
+    {
+        if (!string.IsNullOrWhiteSpace(_openedDocumentUri))
+        {
+            _engine.CloseDocument(_openedDocumentUri);
+        }
+
+        _documentOpened = false;
+        _openedDocumentUri = null;
+    }
+
     private static SourcePosition ToSourcePosition(int offset, TextDocument document)
     {
         var boundedOffset = Math.Max(0, Math.Min(offset, document.TextLength));
