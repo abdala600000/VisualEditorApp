@@ -82,10 +82,14 @@
 					<Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="2" IsVisible="False">
 						<Grid>
 							<!-- Rotation Handle -->
-							<Thumb Name="RotateHandle" Classes="ResizerThumb" 
+							<Ellipse Name="RotateHandle" Width="14" Height="14" 
+								   Fill="DodgerBlue" Stroke="White" StrokeThickness="1"
 								   HorizontalAlignment="Center" VerticalAlignment="Top" 
-								   Margin="0,-30,0,0" DragDelta="Rotate_DragDelta"
-								   Cursor="Hand" ToolTip.Tip="Rotate"/>
+								   Margin="0,-30,0,0" 
+								   Cursor="Hand" ToolTip.Tip="Rotate"
+								   PointerPressed="RotateHandle_PointerPressed"
+								   PointerMoved="RotateHandle_PointerMoved"
+								   PointerReleased="RotateHandle_PointerReleased" />
 							<Line StartPoint="0,-5" EndPoint="0,-25" 
 								  HorizontalAlignment="Center" VerticalAlignment="Top"
 								  Stroke="DodgerBlue" StrokeThickness="1"/>

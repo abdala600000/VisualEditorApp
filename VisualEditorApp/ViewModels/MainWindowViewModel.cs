@@ -12,12 +12,13 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using VisualEditorApp.Services;
-using VisualEditorApp.Models;
-using VisualEditorApp.ViewModels.Documents;
-using VisualEditorApp.ViewModels.Tools;
 using VisualEditor.Core.Messages;
 using VisualEditor.Core.Models;
+using VisualEditor.Toolbox.Outline;
+using VisualEditorApp.Models;
+using VisualEditorApp.Services;
+using VisualEditorApp.ViewModels.Documents;
+using VisualEditorApp.ViewModels.Tools;
 
 namespace VisualEditorApp.ViewModels
 {
@@ -46,6 +47,10 @@ namespace VisualEditorApp.ViewModels
             }
 
             Layout = layout;
+
+           new DocumentOutlineView { DataContext = DocumentOutlineViewModel.Instance };
+
+
             WorkspaceService.Instance.WorkspaceLoaded += OnWorkspaceLoaded;
             
             // Subscribe to build results

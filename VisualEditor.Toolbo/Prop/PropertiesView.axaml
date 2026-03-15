@@ -24,7 +24,8 @@
                     <Grid ColumnDefinitions="Auto, *, Auto">
                         <TextBlock Text="Name:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#555"/>
                         <TextBox Grid.Column="1" Name="NameEditor" FontSize="13" FontWeight="Bold" 
-                                 BorderThickness="0,0,0,1" Background="Transparent"/>
+                                 BorderThickness="0,0,0,1" Background="Transparent"
+                                 KeyUp="NameEditor_KeyUp" LostFocus="NameEditor_LostFocus"/>
                         <TextBlock Grid.Column="2" Name="SelectedTypeText" Text="(Type)" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
                     </Grid>
                 </Border>

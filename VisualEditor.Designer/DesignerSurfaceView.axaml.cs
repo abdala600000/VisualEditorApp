@@ -151,47 +151,85 @@ namespace VisualEditor.Designer
                 return;
             }
 
-            // 🎯 حساب المربع المحيط بكل العناصر المحددة (Bounding Box)
-            Rect? groupBounds = null;
-            foreach (var ctrl in _selectedControls)
+            // إخفاء مقبض الدوران لو فيه أكتر من عنصر
+            var rotateHandle = SelectionAdorner.FindControl<Control>("RotateHandle");
+            if (rotateHandle != null) rotateHandle.IsVisible = _selectedControls.Count == 1;
+
+            if (_selectedControls.Count == 1)
             {
+                // 🎯 حالة العنصر الواحد: تدوير ومطابقة دقيقة (بديلة لـ DesignerItem)
+                var ctrl = _selectedControls[0];
                 var transform = ctrl.TransformToVisual(AdornerCanvas);
                 if (transform.HasValue)
                 {
-                    var bounds = new Rect(new Point(0, 0), ctrl.Bounds.Size);
-                    var rectInAdorner = bounds.TransformToAABB(transform.Value);
+                    double w = ctrl.Bounds.Width;
+                    double h = ctrl.Bounds.Height;
                     
-                    if (groupBounds == null) groupBounds = rectInAdorner;
-                    else groupBounds = groupBounds.Value.Union(rectInAdorner);
-                }
-            }
+                    // حساب الزوايا الأربعة للعنصر الحقيقي وتمريرها في مصفوفة التحويل
+                    var topLeft = new Point(0, 0).Transform(transform.Value);
+                    var topRight = new Point(w, 0).Transform(transform.Value);
+                    var bottomLeft = new Point(0, h).Transform(transform.Value);
+                    var bottomRight = new Point(w, h).Transform(transform.Value);
 
-            if (groupBounds != null)
-            {
-                var finalBounds = groupBounds.Value;
-                SelectionAdorner.Width = finalBounds.Width;
-                SelectionAdorner.Height = finalBounds.Height;
-                Canvas.SetLeft(SelectionAdorner, finalBounds.X);
-                Canvas.SetTop(SelectionAdorner, finalBounds.Y);
+                    // حساب المركز الدقيق في الـ AdornerCanvas
+                    var centerGlobal = new Point(
+                        (topLeft.X + bottomRight.X) / 2,
+                        (topLeft.Y + bottomRight.Y) / 2
+                    );
 
-                SelectionAdorner.IsVisible = true;
-                AdornerCanvas.IsHitTestVisible = true;
+                    // حساب الأبعاد البصرية الحقيقية (المسافة بين الزوايا)
+                    double visualWidth = Math.Sqrt(Math.Pow(topRight.X - topLeft.X, 2) + Math.Pow(topRight.Y - topLeft.Y, 2));
+                    double visualHeight = Math.Sqrt(Math.Pow(bottomLeft.X - topLeft.X, 2) + Math.Pow(bottomLeft.Y - topLeft.Y, 2));
 
-                // إخفاء مقبض الدوران لو فيه أكتر من عنصر لتجنب التعقيد حالياً
-                var rotateHandle = SelectionAdorner.FindControl<Control>("RotateHandle");
-                if (rotateHandle != null) rotateHandle.IsVisible = _selectedControls.Count == 1;
+                    SelectionAdorner.Width = visualWidth;
+                    SelectionAdorner.Height = visualHeight;
 
-                // تطبيق الدوران فقط لو فيه عنصر واحد
-                if (_selectedControls.Count == 1 && _selectedControls[0].RenderTransform is RotateTransform rt)
-                {
-                    SelectionAdorner.RenderTransform = new RotateTransform(rt.Angle);
+                    // وضع الإطار الأزرق في نفس المركز
+                    Canvas.SetLeft(SelectionAdorner, centerGlobal.X - (visualWidth / 2));
+                    Canvas.SetTop(SelectionAdorner, centerGlobal.Y - (visualHeight / 2));
+
+                    // استخراج زاوية الدوران وتطبيقها بحيث يميل الإطار مع العنصر بالضبط
+                    if (ctrl.RenderTransform is RotateTransform rt)
+                    {
+                        SelectionAdorner.RenderTransform = new RotateTransform(rt.Angle);
+                    }
+                    else
+                    {
+                        SelectionAdorner.RenderTransform = null;
+                    }
+                    
                     SelectionAdorner.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
                 }
-                else
+            }
+            else
+            {
+                // 🎯 حالة التحديد المتعدد: صندوق AABB يحيط بكل العناصر
+                SelectionAdorner.RenderTransform = null;
+                Rect? groupBounds = null;
+                foreach (var ctrl in _selectedControls)
                 {
-                    SelectionAdorner.RenderTransform = null;
+                    var transform = ctrl.TransformToVisual(AdornerCanvas);
+                    if (transform.HasValue)
+                    {
+                        var bounds = new Rect(new Point(0, 0), ctrl.Bounds.Size);
+                        var rectInAdorner = bounds.TransformToAABB(transform.Value);
+                        if (groupBounds == null) groupBounds = rectInAdorner;
+                        else groupBounds = groupBounds.Value.Union(rectInAdorner);
+                    }
+                }
+
+                if (groupBounds != null)
+                {
+                    var finalBounds = groupBounds.Value;
+                    SelectionAdorner.Width = finalBounds.Width;
+                    SelectionAdorner.Height = finalBounds.Height;
+                    Canvas.SetLeft(SelectionAdorner, finalBounds.X);
+                    Canvas.SetTop(SelectionAdorner, finalBounds.Y);
                 }
             }
+
+            SelectionAdorner.IsVisible = true;
+            AdornerCanvas.IsHitTestVisible = true;
         }
 
         private Control? GetSelectableControl(Control? element)
@@ -563,12 +601,27 @@ namespace VisualEditor.Designer
             if (_selectedControl == null || sender is not Thumb thumb) return;
 
             // 2. 🎯 السحر هنا: بنجيب نسبة الزووم الحالية من الـ ZoomBorder
-            // بنقسم حركة الماوس على الزووم عشان الحركة تبقى "طلقة" ودقيقة مهما كبرت أو صغرت
+            // والمهم جداً: لو العنصر ملفوف (Rotated) الماوس بيتحرك في شاشة عادية بس العنصر مايل
+            // فلازم نحول حركة الماوس لـ "مساحة العنصر" الداخلية
             double zoomX = MyZoomBorder.ZoomX;
             double zoomY = MyZoomBorder.ZoomY;
 
             double deltaX = e.Vector.X / zoomX;
             double deltaY = e.Vector.Y / zoomY;
+
+            // إذا كان العنصر يحتوي على دوران، يجب تدوير متجه الحركة (Vector) عكس زاوية الدوران المتراكمة
+            if (_selectedControl.RenderTransform is RotateTransform rt)
+            {
+                double angleRad = -rt.Angle * (Math.PI / 180.0); // زاوية سالبة للانعكاس
+                double cosA = Math.Cos(angleRad);
+                double sinA = Math.Sin(angleRad);
+
+                double newDeltaX = deltaX * cosA - deltaY * sinA;
+                double newDeltaY = deltaX * sinA + deltaY * cosA;
+
+                deltaX = newDeltaX;
+                deltaY = newDeltaY;
+            }
 
             // 3. قراءة الأبعاد الحالية بدقة
             double currentWidth = _selectedControl.Width.DefaultIfNaN(_selectedControl.Bounds.Width);
@@ -595,13 +648,13 @@ namespace VisualEditor.Designer
             if (newWidth > 10)
             {
                 _selectedControl.Width = newWidth;
-                if (leftOffset != 0) ApplyPositionOffset(_selectedControl, leftOffset, 0);
+                if (leftOffset != 0 && !(_selectedControl.RenderTransform is RotateTransform)) ApplyPositionOffset(_selectedControl, leftOffset, 0);
             }
 
             if (newHeight > 10)
             {
                 _selectedControl.Height = newHeight;
-                if (topOffset != 0) ApplyPositionOffset(_selectedControl, 0, topOffset);
+                if (topOffset != 0 && !(_selectedControl.RenderTransform is RotateTransform)) ApplyPositionOffset(_selectedControl, 0, topOffset);
             }
 
             // 6. تحديث برواز التحديد الأزرق فوراً
@@ -629,9 +682,23 @@ namespace VisualEditor.Designer
 
         #region 8. مخرجات الدوران والتحكم (Rotation Logic)
 
-        private void Rotate_DragDelta(object? sender, VectorEventArgs e)
+        private bool _isRotating = false;
+
+        private void RotateHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
             if (_selectedControl == null) return;
+            var props = e.GetCurrentPoint(DesignSurface).Properties;
+            if (props.IsLeftButtonPressed)
+            {
+                _isRotating = true;
+                e.Pointer.Capture(sender as Control);
+                e.Handled = true;
+            }
+        }
+
+        private void RotateHandle_PointerMoved(object? sender, PointerEventArgs e)
+        {
+            if (!_isRotating || _selectedControl == null) return;
 
             // 1. حساب مركز الكنترول بالنسبة للـ AdornerCanvas
             var transform = _selectedControl.TransformToVisual(AdornerCanvas);
@@ -640,22 +707,41 @@ namespace VisualEditor.Designer
             var center = new Rect(0, 0, _selectedControl.Bounds.Width, _selectedControl.Bounds.Height)
                 .Center.Transform(transform.Value);
 
-            // 2. حساب موضع الماوس الحالي بالنسبة للـ Adorner (لأنه غير متأثر بالزووم)
-            var mousePos = _lastAdornerMousePos;
+            // 2. موضع الماوس الفعلي أثناء السحب (أدق من التخزين السابق)
+            var mousePos = e.GetPosition(AdornerCanvas);
 
             // 3. حساب الزاوية (Atan2 ترجع الزاوية بالراديان)
             double angleRad = Math.Atan2(mousePos.Y - center.Y, mousePos.X - center.X);
             double angleDeg = angleRad * (180 / Math.PI) + 90; // +90 عشان المقبض فوق
 
-            // 4. تطبيق الدوران
+            // 4. تطبيق الدوران مع "سنابات" (Snapping) كل 5 درجات للتحكم الأدق
             _selectedControl.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
-            double snappedAngle = Math.Round(angleDeg / 5.0) * 5.0;
-            _selectedControl.RenderTransform = new RotateTransform(snappedAngle);
-
-            UpdateAdornerPosition();
             
-            // 🎯 إبلاغ السيستم بتغير الـ RenderTransform يدوياً لضمان الـ Sync
+            // 🎯 السحر هنا: لو ضغط Shift، الدوران يكون حر، لو ساب Shift، يلف بـ 5 درجات
+            bool isShift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+            double finalAngle = isShift ? angleDeg : Math.Round(angleDeg / 5.0) * 5.0;
+
+            _selectedControl.RenderTransform = new RotateTransform(finalAngle);
+
+            // 5. تحديث مكان وحجم المربع الأزرق ليلتف مع العنصر
+            UpdateAdornerPosition();
+
+            // 6. إشعار بتغير التصميم للمزامنة
             DesignChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void RotateHandle_PointerReleased(object? sender, PointerReleasedEventArgs e)
+        {
+            _isRotating = false;
+            e.Pointer.Capture(null);
+            e.Handled = true;
+            
+            // تحديث أخير وضمان الحفظ
+            if (_selectedControl != null)
+            {
+                UpdateAdornerPosition();
+                DesignChanged?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         #endregion
@@ -739,7 +825,7 @@ namespace VisualEditor.Designer
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Failed to instantiate {typeName}: {ex.Message}");
+                      
                         MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "DESIGN001", $"Failed to instantiate {typeName}: {ex.Message}"));
                         return;
                     }

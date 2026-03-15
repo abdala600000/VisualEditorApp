@@ -1,12 +1,10 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:m="using:VisualEditor.Toolbox.Outline"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
             
              x:Class="VisualEditor.Toolbox.Outline.DocumentOutlineView"
              x:DataType="m:DocumentOutlineViewModel">
-      <UserControl.DataContext>
-		<m:DocumentOutlineViewModel/>
-    </UserControl.DataContext>
+     
 
     <Grid RowDefinitions="Auto, *">
         <TextBox Grid.Row="0" Margin="5" Watermark="Search Elements..." />

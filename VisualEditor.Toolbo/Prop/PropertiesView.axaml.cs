@@ -128,4 +128,42 @@ public partial class PropertiesView : UserControl
             MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "PROP001", $"Failed to set property: {ex.Message}"));
         }
     }
+    private void NameEditor_KeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            ApplyNameChange();
+        }
+    }
+
+    private void NameEditor_LostFocus(object? sender, RoutedEventArgs e)
+    {
+        ApplyNameChange();
+    }
+
+    private void ApplyNameChange()
+    {
+        if (_currentElement == null || _isUpdatingFromCode) return;
+
+        string newName = NameEditor.Text ?? "";
+        if (_currentElement.Name == newName) return;
+
+        try
+        {
+            _currentElement.Name = newName;
+            
+            // نبلغ الـ Patcher عشان يحدث الـ XAML
+            // ملاحظة: الـ Patcher يحتاج الـ PropertyInfo للـ Name
+            var nameProp = typeof(Control).GetProperty("Name");
+            if (nameProp != null)
+            {
+                PropertyChangedByUser?.Invoke(this, (nameProp, newName, _currentElement));
+                MessageBus.Send(new DesignChangedMessage());
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "PROP002", $"Failed to rename control: {ex.Message}"));
+        }
+    }
 }

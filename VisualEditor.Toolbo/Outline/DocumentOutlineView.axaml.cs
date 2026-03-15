@@ -14,8 +14,9 @@ public partial class DocumentOutlineView : UserControl
     public DocumentOutlineView()
     {
         InitializeComponent();
+        DataContext = DocumentOutlineViewModel.Instance;
 
-      
+
     }
 
 
