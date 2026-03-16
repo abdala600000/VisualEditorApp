@@ -250,6 +250,12 @@ namespace VisualEditorApp.Views.Documents
                 if (newXml != xml)
                 {
                     MyCodeEditor.SetXamlText(newXml);
+                    
+                    // 🎯 تحديث الـ Outline يدوياً من العناصر الموجودة فعلياً بدون ريندر كامل
+                    if (MyDesignSurface?.RootDesign != null)
+                    {
+                        MessageBus.Send(new DesignTreeUpdatedMessage(MyDesignSurface.RootDesign));
+                    }
                 }
             }
             finally { _isUpdating = false; }
@@ -266,6 +272,12 @@ namespace VisualEditorApp.Views.Documents
                 if (newXml != xml)
                 {
                     MyCodeEditor.SetXamlText(newXml);
+
+                    // 🎯 تحديث الـ Outline يدوياً
+                    if (MyDesignSurface?.RootDesign != null)
+                    {
+                        MessageBus.Send(new DesignTreeUpdatedMessage(MyDesignSurface.RootDesign));
+                    }
                 }
             }
             finally { _isUpdating = false; }
