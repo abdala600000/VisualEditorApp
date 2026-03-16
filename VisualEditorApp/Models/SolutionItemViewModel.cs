@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using VisualEditor.Core;
 using VisualEditor.Core.Messages;
 using VisualEditor.Core.Models;
+using VisualEditor.Core.Services;
 using VisualEditorApp.Services;
 
 namespace VisualEditorApp.Models
@@ -53,6 +54,32 @@ namespace VisualEditorApp.Models
             if (IsProjectNode)
             {
                 WorkspaceService.Instance.SetCurrentStartupProject(this);
+
+
+                // 1. تحديد مكان مجلد الـ bin للمشروع المختار
+                string projDir = System.IO.Path.GetDirectoryName(Path);
+                string binPath = System.IO.Path.Combine(projDir, "bin");
+
+                if (System.IO.Directory.Exists(binPath))
+                {
+                    // 2. البحث عن أحدث مجلد Debug أو Release
+                    var latestBin = new System.IO.DirectoryInfo(binPath)
+                        .GetDirectories("*", System.IO.SearchOption.AllDirectories)
+                        .Where(d => d.GetFiles("*.dll").Length > 2)
+                        .OrderByDescending(d => d.LastWriteTime)
+                        .FirstOrDefault();
+
+                    if (latestBin != null)
+                    {
+                        // 3. 💾 حفظ في الإعدادات (باستخدام الخدمة اللي عملناها)
+                        var settings = SettingsService.Load();
+                        settings.LastStartupProjectBin = latestBin.FullName;
+                        SettingsService.Save(settings);
+
+                        // 4. 🚀 تحديث المحرك فوراً عشان يحمل الـ DLLs الجديدة
+                        LiveDesignerCompiler.UpdateStartupPath(latestBin.FullName);
+                    }
+                }
             }
         }
 

@@ -659,8 +659,16 @@ namespace VisualEditor.Designer
 
             // 6. تحديث برواز التحديد الأزرق فوراً
             UpdateAdornerPosition();
+        }
 
-            // 7. إبلاغ السيستم إن التصميم اتغير (عشان الـ Undo/Redo أو حفظ الـ XAML)
+        private void Resize_DragCompleted(object? sender, VectorEventArgs e)
+        {
+            if (_selectedControl == null) return;
+            
+            // تحديث برواز التحديد الأزرق عند انتهاء السحب
+            UpdateAdornerPosition();
+
+            // إبلاغ السيستم إن التصميم اتغير (عشان الـ Undo/Redo أو حفظ الـ XAML)
             DesignChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -725,9 +733,6 @@ namespace VisualEditor.Designer
 
             // 5. تحديث مكان وحجم المربع الأزرق ليلتف مع العنصر
             UpdateAdornerPosition();
-
-            // 6. إشعار بتغير التصميم للمزامنة
-            DesignChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void RotateHandle_PointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -855,10 +860,17 @@ namespace VisualEditor.Designer
                         targetContainer.Name != "SimulatedContentArea" && 
                         targetContainer.Name != "SimulatedWindowFrame")
                     {
-                        string baseParentName = targetContainer.GetType().Name;
-                        int pCounter = 1;
-                        while (FindControlByName(DesignSurface.Content as Control, $"{baseParentName}_{pCounter}") != null) pCounter++;
-                        targetContainer.Name = $"{baseParentName}_{pCounter}";
+                        try
+                        {
+                            string baseParentName = targetContainer.GetType().Name;
+                            int pCounter = 1;
+                            while (FindControlByName(DesignSurface.Content as Control, $"{baseParentName}_{pCounter}") != null) pCounter++;
+                            targetContainer.Name = $"{baseParentName}_{pCounter}";
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Warning: Could not set auto-name for container: {ex.Message}");
+                        }
                     }
 
                     var dropPosition = e.GetPosition(targetContainer);
