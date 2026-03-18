@@ -58,11 +58,13 @@ namespace VisualEditor.Core
             }
         }
 
-        public static Control RenderLiveXaml(string xamlText, string filePath)
+        public static Control RenderLiveXaml(string xamlText, string filePath, CancellationToken cancellationToken = default)
         {  
             string projName = null;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // 1. شحن كل الـ DLLs من مجلد bin للذاكرة فوراً
                 LoadProjectAssemblies(filePath);
 

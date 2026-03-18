@@ -1,11 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:VisualEditorApp.ViewModels.Tools"
-             xmlns:prop="clr-namespace:VisualEditor.Toolbox.Prop;assembly=VisualEditor.Toolbox"
-             mc:Ignorable="d" d:DesignWidth="260" d:DesignHeight="400"
-             x:Class="VisualEditorApp.Views.Tools.PropertiesToolView"
-             x:DataType="vm:PropertiesToolViewModel" x:CompileBindings="True">
-    <prop:PropertiesView />
+             x:Class="VisualEditorApp.Views.Tools.PropertiesToolView">
+    <ScrollViewer>
+        <ItemsControl Name="PropertiesItemsControl">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="*,*" Margin="2">
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="11" Foreground="#CCCCCC" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Value}" FontSize="11" Background="Transparent" BorderThickness="0,0,0,1" BorderBrush="#555" Padding="2,1" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
 </UserControl>

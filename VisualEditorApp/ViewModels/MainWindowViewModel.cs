@@ -14,7 +14,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using VisualEditor.Core.Messages;
 using VisualEditor.Core.Models;
-using VisualEditor.Toolbox.Outline;
 using VisualEditorApp.Models;
 using VisualEditorApp.Services;
 using VisualEditorApp.ViewModels.Documents;
@@ -27,6 +26,7 @@ namespace VisualEditorApp.ViewModels
         private readonly DockFactory _factory;
         private readonly SolutionLoader _solutionLoader;
         private Process? _runningProcess;
+        private CancellationTokenSource? _buildCts;
 
         [ObservableProperty] private IRootDock? _layout;
         [ObservableProperty] private string _statusText = "Ready";
@@ -34,6 +34,7 @@ namespace VisualEditorApp.ViewModels
         [ObservableProperty] private string _activeDocumentStatus = "No document";
         [ObservableProperty] private Document? _activeDocument;
         [ObservableProperty] private bool _isDarkTheme = true;
+        [ObservableProperty] private bool _isBuildRunning = false;
 
         public MainWindowViewModel()
         {
@@ -47,9 +48,6 @@ namespace VisualEditorApp.ViewModels
             }
 
             Layout = layout;
-
-           new DocumentOutlineView { DataContext = DocumentOutlineViewModel.Instance };
-
 
             WorkspaceService.Instance.WorkspaceLoaded += OnWorkspaceLoaded;
             
@@ -125,9 +123,19 @@ namespace VisualEditorApp.ViewModels
             var startupProject = WorkspaceService.Instance.CurrentStartupProject;
             if (startupProject != null)
             {
-                StatusText = $"Rebuilding {startupProject.Name}...";
-                _factory.ErrorListTool.Clear();
-                await startupProject.RebuildCommand.ExecuteAsync(null);
+                _buildCts?.Cancel();
+                _buildCts = new CancellationTokenSource();
+                IsBuildRunning = true;
+                try
+                {
+                    StatusText = $"Rebuilding {startupProject.Name}...";
+                    _factory.ErrorListTool.Clear();
+                    await startupProject.RebuildCommand.ExecuteAsync(null);
+                }
+                finally
+                {
+                    IsBuildRunning = false;
+                }
             }
             else StatusText = "Set a startup project first.";
         }
@@ -138,9 +146,19 @@ namespace VisualEditorApp.ViewModels
             var startupProject = WorkspaceService.Instance.CurrentStartupProject;
             if (startupProject != null)
             {
-                StatusText = $"Cleaning {startupProject.Name}...";
-                await startupProject.CleanCommand.ExecuteAsync(null);
-                StatusText = $"Clean finished for {startupProject.Name}";
+                _buildCts?.Cancel();
+                _buildCts = new CancellationTokenSource();
+                IsBuildRunning = true;
+                try
+                {
+                    StatusText = $"Cleaning {startupProject.Name}...";
+                    await startupProject.CleanCommand.ExecuteAsync(null);
+                    StatusText = $"Clean finished for {startupProject.Name}";
+                }
+                finally
+                {
+                    IsBuildRunning = false;
+                }
             }
             else StatusText = "Set a startup project first.";
         }
@@ -408,10 +426,20 @@ namespace VisualEditorApp.ViewModels
         {
             if (!string.IsNullOrEmpty(WorkspaceService.Instance.CurrentWorkspacePath))
             {
-                StatusText = "Building solution...";
-                _factory.ErrorListTool.Clear();
-                var slnItem = new SolutionItemViewModel(SolutionItemKind.Project, "Solution", WorkspaceService.Instance.CurrentWorkspacePath);
-                await slnItem.BuildCommand.ExecuteAsync(null);
+                _buildCts?.Cancel();
+                _buildCts = new CancellationTokenSource();
+                IsBuildRunning = true;
+                try
+                {
+                    StatusText = "Building solution...";
+                    _factory.ErrorListTool.Clear();
+                    var slnItem = new SolutionItemViewModel(SolutionItemKind.Project, "Solution", WorkspaceService.Instance.CurrentWorkspacePath);
+                    await slnItem.BuildCommand.ExecuteAsync(null);
+                }
+                finally
+                {
+                    IsBuildRunning = false;
+                }
             }
         }
 
@@ -420,10 +448,20 @@ namespace VisualEditorApp.ViewModels
         {
             if (!string.IsNullOrEmpty(WorkspaceService.Instance.CurrentWorkspacePath))
             {
-                StatusText = "Rebuilding solution...";
-                _factory.ErrorListTool.Clear();
-                var slnItem = new SolutionItemViewModel(SolutionItemKind.Project, "Solution", WorkspaceService.Instance.CurrentWorkspacePath);
-                await slnItem.RebuildCommand.ExecuteAsync(null);
+                _buildCts?.Cancel();
+                _buildCts = new CancellationTokenSource();
+                IsBuildRunning = true;
+                try
+                {
+                    StatusText = "Rebuilding solution...";
+                    _factory.ErrorListTool.Clear();
+                    var slnItem = new SolutionItemViewModel(SolutionItemKind.Project, "Solution", WorkspaceService.Instance.CurrentWorkspacePath);
+                    await slnItem.RebuildCommand.ExecuteAsync(null);
+                }
+                finally
+                {
+                    IsBuildRunning = false;
+                }
             }
         }
 
@@ -433,14 +471,31 @@ namespace VisualEditorApp.ViewModels
             var startupProject = WorkspaceService.Instance.CurrentStartupProject;
             if (startupProject != null)
             {
-                StatusText = $"Building {startupProject.Name}...";
-                _factory.ErrorListTool.Clear();
-                await startupProject.BuildCommand.ExecuteAsync(null);
+                _buildCts?.Cancel();
+                _buildCts = new CancellationTokenSource();
+                IsBuildRunning = true;
+                try
+                {
+                    StatusText = $"Building {startupProject.Name}...";
+                    _factory.ErrorListTool.Clear();
+                    await startupProject.BuildCommand.ExecuteAsync(null);
+                }
+                finally
+                {
+                    IsBuildRunning = false;
+                }
             }
             else
             {
                 StatusText = "No startup project selected for build.";
             }
+        }
+
+        [RelayCommand]
+        private void CancelBuild()
+        {
+            _buildCts?.Cancel();
+            IsBuildRunning = false;
         }
     }
 }

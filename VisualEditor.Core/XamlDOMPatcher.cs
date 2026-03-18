@@ -69,6 +69,93 @@ public static class XamlDOMPatcher
         return Regex.Replace(xaml, openClose, "", RegexOptions.Singleline);
     }
 
+    // ─── PatchRenderTransform ─────────────────────────────────────────────────
+    public static string PatchRenderTransform(string xaml, Control target, double angle, double skewX, double skewY)
+    {
+        if (target == null || string.IsNullOrWhiteSpace(xaml) || string.IsNullOrEmpty(target.Name))
+            return xaml;
+
+        // إذا كانت كل القيم صفر، احذف RenderTransform بالكامل
+        if (angle == 0 && skewX == 0 && skewY == 0)
+            return RemoveRenderTransformElement(xaml, target.Name);
+
+        // بناء محتوى RenderTransform
+        string transformContent;
+        if (skewX == 0 && skewY == 0)
+            transformContent = $"<RotateTransform Angle=\"{angle}\" />";
+        else if (angle == 0)
+            transformContent = $"<SkewTransform AngleX=\"{skewX}\" AngleY=\"{skewY}\" />";
+        else
+            transformContent = $"<TransformGroup><SkewTransform AngleX=\"{skewX}\" AngleY=\"{skewY}\" /><RotateTransform Angle=\"{angle}\" /></TransformGroup>";
+
+        // إيجاد العنصر
+        var match = FindElementByName(xaml, target.Name);
+        if (!match.Success) return xaml;
+
+        // استخراج اسم النوع من الـ tag
+        var typeMatch = Regex.Match(match.Value, @"^<(\w[\w:]*)");
+        if (!typeMatch.Success) return xaml;
+        string typeName = typeMatch.Groups[1].Value;
+
+        string propElementOpen  = $"<{typeName}.RenderTransform>";
+        string propElementClose = $"</{typeName}.RenderTransform>";
+
+        // هل يوجد property element موجود بالفعل؟
+        int searchFrom = match.Index + match.Length;
+        // نبحث بعد الـ opening tag مباشرة
+        // لكن أولاً نتأكد أن الـ tag ليس self-closing
+        bool isSelfClosing = match.Value.TrimEnd().EndsWith("/>");
+
+        if (isSelfClosing)
+        {
+            // نحوّل self-closing إلى open/close ونضيف property element
+            string openTag = Regex.Replace(match.Value, @"\s*/>(\s*)$", ">");
+            string indent = GetIndentOf(xaml, match.Index) + "    ";
+            string closeTag = $"\n</{typeName}>";
+            string newBlock = openTag + $"\n{indent}{propElementOpen}{transformContent}{propElementClose}" + closeTag;
+            return xaml.Substring(0, match.Index) + newBlock + xaml.Substring(match.Index + match.Length);
+        }
+        else
+        {
+            // ابحث عن property element موجود واستبدله
+            string existingPropPattern = Regex.Escape(propElementOpen) + @".*?" + Regex.Escape(propElementClose);
+            string afterTag = xaml.Substring(searchFrom);
+            var existingMatch = Regex.Match(afterTag, existingPropPattern, RegexOptions.Singleline);
+            if (existingMatch.Success)
+            {
+                string replacement = propElementOpen + transformContent + propElementClose;
+                return xaml.Substring(0, searchFrom) + afterTag.Substring(0, existingMatch.Index)
+                    + replacement + afterTag.Substring(existingMatch.Index + existingMatch.Length);
+            }
+            else
+            {
+                // أضف property element جديد بعد الـ opening tag مباشرة
+                string indent = GetIndentOf(xaml, match.Index) + "    ";
+                string insertion = $"\n{indent}{propElementOpen}{transformContent}{propElementClose}";
+                return xaml.Substring(0, searchFrom) + insertion + xaml.Substring(searchFrom);
+            }
+        }
+    }
+
+    private static string RemoveRenderTransformElement(string xaml, string elementName)
+    {
+        var match = FindElementByName(xaml, elementName);
+        if (!match.Success) return xaml;
+
+        var typeMatch = Regex.Match(match.Value, @"^<(\w[\w:]*)");
+        if (!typeMatch.Success) return xaml;
+        string typeName = typeMatch.Groups[1].Value;
+
+        string propElementOpen  = Regex.Escape($"<{typeName}.RenderTransform>");
+        string propElementClose = Regex.Escape($"</{typeName}.RenderTransform>");
+        string pattern = $@"\s*{propElementOpen}.*?{propElementClose}";
+
+        int searchFrom = match.Index + match.Length;
+        string afterTag = xaml.Substring(searchFrom);
+        string cleaned = Regex.Replace(afterTag, pattern, "", RegexOptions.Singleline);
+        return xaml.Substring(0, searchFrom) + cleaned;
+    }
+
     // ─── Private Helpers ──────────────────────────────────────────────────────
 
     /// <summary>

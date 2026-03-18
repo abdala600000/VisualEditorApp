@@ -35,7 +35,6 @@ namespace VisualEditor.Designer
 
         // النقاط والإحداثيات
         private Point _dragStartMousePosition;
-        private Point _dragStartControlPosition;
         private Point _selectionStartPoint;
         private Point _currentPointerPosition;
         private Point _lastAdornerMousePos;
@@ -51,7 +50,7 @@ namespace VisualEditor.Designer
 
         private Control? _internalClipboard; // الحافظة الداخلية للبرنامج
 
-        // 🎯 خطوط المحاذاة الذكية
+        // خطوط المحاذاة الذكية
         private Line _snapLineX = new Line { Stroke = Brushes.DeepSkyBlue, StrokeThickness = 1, StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 4 }, IsVisible = false };
         private Line _snapLineY = new Line { Stroke = Brushes.DeepSkyBlue, StrokeThickness = 1, StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 4 }, IsVisible = false };
         #endregion
@@ -62,7 +61,7 @@ namespace VisualEditor.Designer
         {
             InitializeComponent();
             SetupDesignerEvents();
-            CreateContextMenu(); // 👈 ضيف السطر ده هنا
+            CreateContextMenu(); // ضيف السطر ده هنا
 
 
             // إضافة خطوط المحاذاة لطبقة الرسم العلوية
@@ -164,7 +163,7 @@ namespace VisualEditor.Designer
 
             if (_selectedControls.Count == 1)
             {
-                // 🎯 حالة العنصر الواحد: تدوير ومطابقة دقيقة (بديلة لـ DesignerItem)
+                // حالة العنصر الواحد: تدوير ومطابقة دقيقة (بديلة لـ DesignerItem)
                 var ctrl = _selectedControls[0];
 
                 // نحسب الـ transform بدون RenderTransform عشان نحصل على الموضع الأصلي للعنصر
@@ -196,7 +195,11 @@ namespace VisualEditor.Designer
                     else if (savedTransform is TransformGroup tg)
                     {
                         var rotate = tg.Children.OfType<RotateTransform>().FirstOrDefault();
-                        SelectionAdorner.RenderTransform = rotate != null ? new RotateTransform(rotate.Angle) : null;
+                        var skew   = tg.Children.OfType<SkewTransform>().FirstOrDefault();
+                        var group  = new TransformGroup();
+                        if (skew   != null) group.Children.Add(new SkewTransform(skew.AngleX, skew.AngleY));
+                        if (rotate != null) group.Children.Add(new RotateTransform(rotate.Angle));
+                        SelectionAdorner.RenderTransform = group.Children.Count > 0 ? group : null;
                     }
                     else
                     {
@@ -208,7 +211,7 @@ namespace VisualEditor.Designer
             }
             else
             {
-                // 🎯 حالة التحديد المتعدد: صندوق AABB يحيط بكل العناصر
+                // حالة التحديد المتعدد: صندوق AABB يحيط بكل العناصر
                 SelectionAdorner.RenderTransform = null;
                 Rect? groupBounds = null;
                 foreach (var ctrl in _selectedControls)
@@ -246,7 +249,7 @@ namespace VisualEditor.Designer
                 // تجاهل DropLayer - هو مجرد طبقة شفافة
                 if (current == DropLayer) { current = current.Parent as Control; continue; }
 
-                // 🎯 لو العنصر هو الـ Content الأساسي (Root)، نرجعه عادي عشان يظهر في الـ Properties
+                // لو العنصر هو الـ Content الأساسي (Root)، نرجعه عادي عشان يظهر في الـ Properties
                 if (current == DesignSurface.Content) return current;
 
                 if (current.TemplatedParent is Control parentControl) { current = parentControl; continue; }
@@ -261,14 +264,14 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerPressed(object? sender, PointerPressedEventArgs e)
         {
-            // 🎯 ضمان الحصول على التركيز (Focus) عشان زر Delete يشتغل
+            // ضمان الحصول على التركيز (Focus) عشان زر Delete يشتغل
             MyZoomBorder.Focus();
 
             if (e.GetCurrentPoint(DesignSurface).Properties.IsMiddleButtonPressed) return;
 
             var props = e.GetCurrentPoint(DesignSurface).Properties;
 
-            // 🎯 إذا جاء الحدث من DropLayer، نعمل HitTest على DesignSurface لإيجاد الكنترول الفعلي
+            // إذا جاء الحدث من DropLayer، نعمل HitTest على DesignSurface لإيجاد الكنترول الفعلي
             Control? sourceControl = e.Source as Control;
             if (sourceControl == DropLayer || sourceControl?.Name == "DropLayer")
             {
@@ -355,7 +358,7 @@ namespace VisualEditor.Designer
             var currentPos = e.GetPosition(DesignSurface); // الإحداثيات بالنسبة للمصمم (Zoomed)
             _currentPointerPosition = currentPos;
 
-            // 🎯 تحديث موضع الماوس بالنسبة للـ AdornerCanvas (Unzoomed) للعمليات الرياضية
+            // تحديث موضع الماوس بالنسبة للـ AdornerCanvas (Unzoomed) للعمليات الرياضية
             var adPos = e.GetPosition(AdornerCanvas);
             _lastAdornerMousePos = adPos;
 
@@ -373,7 +376,7 @@ namespace VisualEditor.Designer
 
                 double snapSize = 10.0;
 
-                // 🎯 تحريك كل عنصر في المجموعة بناءً على مكانه الأصلي + فرق حركة الماوس
+                // تحريك كل عنصر في المجموعة بناءً على مكانه الأصلي + فرق حركة الماوس
                 foreach (var ctrl in _selectedControls)
                 {
                     if (!_groupStartPositions.ContainsKey(ctrl)) continue;
@@ -422,7 +425,7 @@ namespace VisualEditor.Designer
                 _isDraggingControl = false;
                 if (_hasMoved)
                 {
-                    // 🎯 أخذ "لقطة" للأماكن الجديدة
+                    // أخذ "لقطة" للأماكن الجديدة
                     var oldPositions = new Dictionary<Control, Point>(_groupStartPositions);
                     var newPositions = new Dictionary<Control, Point>();
 
@@ -433,7 +436,7 @@ namespace VisualEditor.Designer
                             : new Point(ctrl.Margin.Left, ctrl.Margin.Top);
                     }
 
-                    // 🎯 تسجيل العملية
+                    // تسجيل العملية
                     HistoryService.Instance.RegisterChange(
                         undo: () => RestorePositions(oldPositions),
                         redo: () => RestorePositions(newPositions)
@@ -593,6 +596,10 @@ namespace VisualEditor.Designer
             DesignSurface.Content = rootControl;
             ClearSelection();
 
+            // إعادة تعيين الحجم لتجنب بقاء حجم الملف القديم حتى يُحسب الحجم الجديد
+            DesignSurfaceWrapper.Width  = double.NaN;
+            DesignSurfaceWrapper.Height = double.NaN;
+
             // ضبط حجم طبقة المحتوى بناءً على حجم الـ root
             Dispatcher.UIThread.Post(() =>
             {
@@ -641,7 +648,7 @@ namespace VisualEditor.Designer
                 if (e.Key == Key.V) PasteSelected();
                 if (e.Key == Key.D) DuplicateSelected();
 
-                // 🎯 التراجع والإعادة
+                // التراجع والإعادة
                 if (e.Key == Key.Z) HistoryService.Instance.Undo();
                 if (e.Key == Key.Y) HistoryService.Instance.Redo();
             }
@@ -756,6 +763,7 @@ namespace VisualEditor.Designer
         private double _rotateInitialAngle;   // الزاوية عند بدء السحب
         private Vector _rotateStartVector;    // المتجه من المركز إلى نقطة البداية
         private Point _rotateCenterInParent; // مركز العنصر في مساحة الـ parent
+        private ITransform? _rotateStartTransform;
 
         private void RotateHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
@@ -796,6 +804,7 @@ namespace VisualEditor.Designer
                                             startPoint.Y - centerInAdorner.Y);
 
             _isRotating = true;
+            _rotateStartTransform = _selectedControl?.RenderTransform;
             e.Pointer.Capture(AdornerCanvas);
             e.Handled = true;
         }
@@ -859,6 +868,13 @@ namespace VisualEditor.Designer
 
             if (_selectedControl != null)
             {
+                var ctrl = _selectedControl;
+                var oldT = _rotateStartTransform;
+                var newT = ctrl.RenderTransform;
+                HistoryService.Instance.RegisterChange(
+                    undo: () => { ctrl.RenderTransform = oldT; UpdateAdornerPosition(); DesignChanged?.Invoke(this, EventArgs.Empty); },
+                    redo: () => { ctrl.RenderTransform = newT; UpdateAdornerPosition(); DesignChanged?.Invoke(this, EventArgs.Empty); }
+                );
                 UpdateAdornerPosition();
                 DesignChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -883,6 +899,7 @@ namespace VisualEditor.Designer
         private Point _skewStartPoint;
         private double _skewInitialAngleX;
         private double _skewInitialAngleY;
+        private ITransform? _skewStartTransform;
 
         private void SkewHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
@@ -898,6 +915,7 @@ namespace VisualEditor.Designer
             _skewInitialAngleY = current.AngleY;
 
             _isSkewing = true;
+            _skewStartTransform = _selectedControl?.RenderTransform;
             e.Pointer.Capture(AdornerCanvas);
             e.Handled = true;
         }
@@ -933,6 +951,17 @@ namespace VisualEditor.Designer
             _isSkewing = false;
             e.Pointer.Capture(null);
             e.Handled = true;
+
+            if (_selectedControl != null)
+            {
+                var ctrl = _selectedControl;
+                var oldT = _skewStartTransform;
+                var newT = ctrl.RenderTransform;
+                HistoryService.Instance.RegisterChange(
+                    undo: () => { ctrl.RenderTransform = oldT; UpdateAdornerPosition(); DesignChanged?.Invoke(this, EventArgs.Empty); },
+                    redo: () => { ctrl.RenderTransform = newT; UpdateAdornerPosition(); DesignChanged?.Invoke(this, EventArgs.Empty); }
+                );
+            }
             DesignChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -998,7 +1027,7 @@ namespace VisualEditor.Designer
                 return;
             }
 
-            // 2. 🎯 تحويل النص لنسبة مئوية رقمية (استخدام switch expression أنظف)
+            // 2. تحويل النص لنسبة مئوية رقمية (استخدام switch expression أنظف)
             double targetZoom = zoomMode switch
             {
                 "25%" => 0.25,
@@ -1074,13 +1103,13 @@ namespace VisualEditor.Designer
                     if (newControl is ContentControl cc) cc.Content = controlType.Name;
                     else if (newControl is TextBlock tb) tb.Text = controlType.Name;
 
-                    // 🎯 تسمية تلقائية فريدة لضمان عمل الـ Sync
+                    // تسمية تلقائية فريدة لضمان عمل الـ Sync
                     string baseName = controlType.Name;
                     int counter = 1;
                     while (FindControlByName(DesignSurface.Content as Control, $"{baseName}_{counter}") != null) counter++;
                     newControl.Name = $"{baseName}_{counter}";
 
-                    // 3. 🎯 البحث عن حاوية صالحة
+                    // 3. البحث عن حاوية صالحة
                     // لو الـ Drop جاء من DropLayer، نعمل HitTest على DesignSurface لنجد الكنترول الفعلي تحته
                     var dropPosOnSurface = e.GetPosition(DesignSurface);
                     Control? hitControl = null;
@@ -1097,7 +1126,7 @@ namespace VisualEditor.Designer
                     Control? targetContainer = GetValidDropTarget(hitControl);
                     if (targetContainer == null) return;
 
-                    // 🎯 ضمان وجود اسم للحاوية لنجاح عملية المزامنة مع الـ XAML
+                    // ضمان وجود اسم للحاوية لنجاح عملية المزامنة مع الـ XAML
                     // نستثني الـ Root والـ Simulated Shells لأن الـ XAML Patcher بيفهم إن الأب الجذري كود فارغ
                     if (string.IsNullOrEmpty(targetContainer.Name) &&
                         targetContainer != DesignSurface.Content &&
@@ -1135,12 +1164,12 @@ namespace VisualEditor.Designer
                     }
                     else if (targetContainer is ContentControl targetContentControl)
                     {
-                        // 🎯 إذا كانت الحاوية تقبل عنصراً واحداً فقط، نقوم باستبدال المحتوى القديم
+                        // إذا كانت الحاوية تقبل عنصراً واحداً فقط، نقوم باستبدال المحتوى القديم
                         targetContentControl.Content = newControl;
                     }
                     else if (targetContainer is Decorator decoratorTarget)
                     {
-                        // 🎯 نفس الشيء للـ Decorator (مثل Border)
+                        // نفس الشيء للـ Decorator (مثل Border)
                         decoratorTarget.Child = newControl;
                     }
 
@@ -1163,7 +1192,7 @@ namespace VisualEditor.Designer
             Control? current = hitControl;
             while (current != null && current != DesignSurface)
             {
-                // 🎯 تجاوز الإطارات الوهمية للنافذة والذهاب مباشرة للمحتوى الحقيقي
+                // تجاوز الإطارات الوهمية للنافذة والذهاب مباشرة للمحتوى الحقيقي
                 if (current.Name == "SimulatedWindowFrame" || current.Name == "SimulatedContentArea" || current.Name == "SimulatedTitleBar")
                 {
                     var contentArea = FindControlByName(DesignSurface.Content as Control, "SimulatedContentArea") as Border;
@@ -1176,10 +1205,10 @@ namespace VisualEditor.Designer
                     }
                 }
 
-                // 🎯 أي Panel (مثل Grid, StackPanel, Canvas) هو هدف صالح دائماً
+                // أي Panel (مثل Grid, StackPanel, Canvas) هو هدف صالح دائماً
                 if (current is Panel) return current;
 
-                // 🎯 الـ ContentControl (مثل Button, ScrollViewer) والـ Decorator (مثل Border)
+                // الـ ContentControl (مثل Button, ScrollViewer) والـ Decorator (مثل Border)
                 // أهداف صالحة حتى لو كان فيها محتوى (سنقوم باستبداله في دالة الـ Drop)
                 if (current is ContentControl && current != DesignSurface.Content) return current;
                 if (current is Decorator && current != DesignSurface.Content) return current;
@@ -1312,7 +1341,7 @@ namespace VisualEditor.Designer
             ClearSelection();
             DesignChanged?.Invoke(this, EventArgs.Empty);
 
-            // 2. 🎯 تسجيل العملية في الـ History
+            // 2. تسجيل العملية في الـ History
             HistoryService.Instance.RegisterChange(
                 undo: () =>
                 {
@@ -1335,7 +1364,7 @@ namespace VisualEditor.Designer
 
         #region 11. عمليات النسخ واللصق (Clipboard Operations)
 
-        // 1. 📄 نَسخ (Copy)
+        // 1. نَسخ (Copy)
         private void CopySelected()
         {
             if (_selectedControl == null) return;
@@ -1345,7 +1374,7 @@ namespace VisualEditor.Designer
             System.Diagnostics.Debug.WriteLine($"Copied: {_selectedControl.GetType().Name}");
         }
 
-        // 2. 📋 لَصق (Paste)
+        // 2. لَصق (Paste)
         private void PasteSelected()
         {
             if (_internalClipboard == null || DesignSurface.Content is not Panel parent) return;
@@ -1365,14 +1394,6 @@ namespace VisualEditor.Designer
 
             DesignChanged?.Invoke(this, EventArgs.Empty);
         }
-
-        //// 3. 👥 تكرار (Duplicate) - هي عبارة عن Copy ثم Paste فوراً
-        //private void DuplicateSelected()
-        //{
-        //    if (_selectedControl == null) return;
-        //    CopySelected();
-        //    PasteSelected();
-        //}
 
         /// <summary>
         /// دالة سحرية لعمل نسخة طبق الأصل من الكنترول (Deep Clone)

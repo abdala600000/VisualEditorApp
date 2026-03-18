@@ -147,6 +147,14 @@
 						<TextBlock Text="⏹️" FontSize="18" Foreground="#F44336"/>
 					</Button>
 
+					<Button Command="{Binding CancelBuildCommand}"
+							ToolTip.Tip="Cancel Build"
+							IsVisible="{Binding IsBuildRunning}"
+							Background="Transparent"
+							BorderThickness="0">
+						<TextBlock Text="🚫" FontSize="18" Foreground="#FF9800"/>
+					</Button>
+
 					<TextBlock Text="|" Foreground="#444" VerticalAlignment="Center" Margin="5,0"/>
 
 					<Button Content="✂️" Background="Transparent" ToolTip.Tip="Cut"/>

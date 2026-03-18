@@ -193,7 +193,14 @@ namespace VisualEditorApp.Views.Documents
                 if (h > 0) xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Height", ((int)Math.Round(h)).ToString());
 
                 if (targetControl.RenderTransform is RotateTransform rt)
-                    xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "RenderTransform", $"rotate({rt.Angle})");
+                    xml = XamlDOMPatcher.PatchRenderTransform(xml, targetControl, rt.Angle, 0, 0);
+                else if (targetControl.RenderTransform is TransformGroup tg)
+                {
+                    var rotate = tg.Children.OfType<RotateTransform>().FirstOrDefault();
+                    var skew   = tg.Children.OfType<SkewTransform>().FirstOrDefault();
+                    xml = XamlDOMPatcher.PatchRenderTransform(xml, targetControl,
+                        rotate?.Angle ?? 0, skew?.AngleX ?? 0, skew?.AngleY ?? 0);
+                }
 
                 if (xml != MyCodeEditor.Text)
                     MyCodeEditor.SetXamlText(xml);

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace VisualEditor.Designer.Services
 {
@@ -8,28 +7,33 @@ namespace VisualEditor.Designer.Services
     {
         public static HistoryService Instance { get; } = new HistoryService();
 
-        // 🎯 المكدس الأول: للحركات اللي نقدر نتراجع عنها (Undo)
-        private readonly Stack<(Action UndoAction, Action RedoAction)> _undoStack = new();
+        private const int MaxHistory = 50;
 
-        // 🎯 المكدس الثاني: للحركات اللي تراجعنا عنها وعاوزين نرجعها تاني (Redo)
-        private readonly Stack<(Action UndoAction, Action RedoAction)> _redoStack = new();
+        private readonly LinkedList<(Action UndoAction, Action RedoAction)> _undoStack = new();
+        private readonly LinkedList<(Action UndoAction, Action RedoAction)> _redoStack = new();
 
         private HistoryService() { }
 
-        // تسجيل حركة جديدة
         public void RegisterChange(Action undo, Action redo)
         {
-            _undoStack.Push((undo, redo));
-            _redoStack.Clear(); // أول ما تعمل حركة جديدة، بنمسح الـ Redo القديم
+            _undoStack.AddLast((undo, redo));
+            // حذف الأقدم إذا تجاوز الحد الأقصى
+            if (_undoStack.Count > MaxHistory)
+                _undoStack.RemoveFirst();
+            _redoStack.Clear();
         }
 
         public void Undo()
         {
             if (_undoStack.Count > 0)
             {
-                var action = _undoStack.Pop();
-                action.UndoAction(); // 🚀 نفذ التراجع
-                _redoStack.Push(action);
+                var action = _undoStack.Last!.Value;
+                _undoStack.RemoveLast();
+                action.UndoAction();
+                _redoStack.AddLast(action);
+                // حذف الأقدم من Redo أيضاً إذا تجاوز الحد
+                if (_redoStack.Count > MaxHistory)
+                    _redoStack.RemoveFirst();
             }
         }
 
@@ -37,9 +41,12 @@ namespace VisualEditor.Designer.Services
         {
             if (_redoStack.Count > 0)
             {
-                var action = _redoStack.Pop();
-                action.RedoAction(); // 🚀 نفذ الإعادة
-                _undoStack.Push(action);
+                var action = _redoStack.Last!.Value;
+                _redoStack.RemoveLast();
+                action.RedoAction();
+                _undoStack.AddLast(action);
+                if (_undoStack.Count > MaxHistory)
+                    _undoStack.RemoveFirst();
             }
         }
 
