@@ -72,7 +72,9 @@
 					</Border>
 				</paz:ZoomBorder>
 
-				<Canvas Name="AdornerCanvas" IsHitTestVisible="False">
+				<Canvas Name="AdornerCanvas" IsHitTestVisible="False"
+					PointerMoved="RotateHandle_PointerMoved"
+					PointerReleased="RotateHandle_PointerReleased">
 					<Rectangle Name="SelectionBox"
 							   Fill="#332196F3"
 							   Stroke="DodgerBlue"
@@ -87,12 +89,11 @@
 								   HorizontalAlignment="Center" VerticalAlignment="Top" 
 								   Margin="0,-30,0,0" 
 								   Cursor="Hand" ToolTip.Tip="Rotate"
-								   PointerPressed="RotateHandle_PointerPressed"
-								   PointerMoved="RotateHandle_PointerMoved"
-								   PointerReleased="RotateHandle_PointerReleased" />
+								   PointerPressed="RotateHandle_PointerPressed" />
 							<Line StartPoint="0,-5" EndPoint="0,-25" 
 								  HorizontalAlignment="Center" VerticalAlignment="Top"
-								  Stroke="DodgerBlue" StrokeThickness="1"/>
+								  Stroke="DodgerBlue" StrokeThickness="1"
+								  IsHitTestVisible="False"/>
 
 							<Thumb Name="TopLeft" Classes="ResizerThumb" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-5,-5,0,0" DragDelta="Resize_DragDelta" DragCompleted="Resize_DragCompleted" />
 							<Thumb Name="TopRight" Classes="ResizerThumb" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0" DragDelta="Resize_DragDelta" DragCompleted="Resize_DragCompleted" />

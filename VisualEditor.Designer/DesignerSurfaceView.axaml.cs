@@ -159,37 +159,30 @@ namespace VisualEditor.Designer
             {
                 // 🎯 حالة العنصر الواحد: تدوير ومطابقة دقيقة (بديلة لـ DesignerItem)
                 var ctrl = _selectedControls[0];
+
+                // نحسب الـ transform بدون RenderTransform عشان نحصل على الموضع الأصلي للعنصر
+                var savedTransform = ctrl.RenderTransform;
+                ctrl.RenderTransform = null;
                 var transform = ctrl.TransformToVisual(AdornerCanvas);
+                ctrl.RenderTransform = savedTransform;
+
                 if (transform.HasValue)
                 {
                     double w = ctrl.Bounds.Width;
                     double h = ctrl.Bounds.Height;
-                    
-                    // حساب الزوايا الأربعة للعنصر الحقيقي وتمريرها في مصفوفة التحويل
-                    var topLeft = new Point(0, 0).Transform(transform.Value);
-                    var topRight = new Point(w, 0).Transform(transform.Value);
-                    var bottomLeft = new Point(0, h).Transform(transform.Value);
-                    var bottomRight = new Point(w, h).Transform(transform.Value);
 
-                    // حساب المركز الدقيق في الـ AdornerCanvas
-                    var centerGlobal = new Point(
-                        (topLeft.X + bottomRight.X) / 2,
-                        (topLeft.Y + bottomRight.Y) / 2
-                    );
+                    // مركز العنصر في الـ AdornerCanvas (بدون دوران)
+                    var centerGlobal = new Point(w / 2, h / 2).Transform(transform.Value);
 
-                    // حساب الأبعاد البصرية الحقيقية (المسافة بين الزوايا)
-                    double visualWidth = Math.Sqrt(Math.Pow(topRight.X - topLeft.X, 2) + Math.Pow(topRight.Y - topLeft.Y, 2));
-                    double visualHeight = Math.Sqrt(Math.Pow(bottomLeft.X - topLeft.X, 2) + Math.Pow(bottomLeft.Y - topLeft.Y, 2));
+                    SelectionAdorner.Width = w;
+                    SelectionAdorner.Height = h;
 
-                    SelectionAdorner.Width = visualWidth;
-                    SelectionAdorner.Height = visualHeight;
+                    // وضع الإطار الأزرق بحيث مركزه = مركز العنصر
+                    Canvas.SetLeft(SelectionAdorner, centerGlobal.X - (w / 2));
+                    Canvas.SetTop(SelectionAdorner, centerGlobal.Y - (h / 2));
 
-                    // وضع الإطار الأزرق في نفس المركز
-                    Canvas.SetLeft(SelectionAdorner, centerGlobal.X - (visualWidth / 2));
-                    Canvas.SetTop(SelectionAdorner, centerGlobal.Y - (visualHeight / 2));
-
-                    // استخراج زاوية الدوران وتطبيقها بحيث يميل الإطار مع العنصر بالضبط
-                    if (ctrl.RenderTransform is RotateTransform rt)
+                    // تطبيق نفس زاوية الدوران على الـ Adorner
+                    if (savedTransform is RotateTransform rt)
                     {
                         SelectionAdorner.RenderTransform = new RotateTransform(rt.Angle);
                     }
@@ -197,7 +190,7 @@ namespace VisualEditor.Designer
                     {
                         SelectionAdorner.RenderTransform = null;
                     }
-                    
+
                     SelectionAdorner.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
                 }
             }
@@ -341,6 +334,9 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerMoved(object? sender, PointerEventArgs e)
         {
+            // لو في دوران جاري، نتجاهل حركة الماوس على السطح
+            if (_isRotating) return;
+
             var currentPos = e.GetPosition(DesignSurface); // الإحداثيات بالنسبة للمصمم (Zoomed)
             _currentPointerPosition = currentPos;
 
@@ -389,6 +385,9 @@ namespace VisualEditor.Designer
 
         private void DesignSurface_PreviewPointerReleased(object? sender, PointerReleasedEventArgs e)
         {
+            // لو في دوران جاري، نتركه للـ RotateHandle_PointerReleased
+            if (_isRotating) return;
+
             if (_isSelecting)
             {
                 ProcessMultiSelection();
@@ -695,53 +694,57 @@ namespace VisualEditor.Designer
         private void RotateHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
             if (_selectedControl == null) return;
-            var props = e.GetCurrentPoint(DesignSurface).Properties;
-            if (props.IsLeftButtonPressed)
-            {
-                _isRotating = true;
-                e.Pointer.Capture(sender as Control);
-                e.Handled = true;
-            }
+            if (!e.GetCurrentPoint(AdornerCanvas).Properties.IsLeftButtonPressed) return;
+
+            _isRotating = true;
+            // نعمل Capture على الـ AdornerCanvas نفسه عشان نستقبل الحركة حتى لو الماوس خرج من الـ Handle
+            e.Pointer.Capture(AdornerCanvas);
+            e.Handled = true;
         }
 
         private void RotateHandle_PointerMoved(object? sender, PointerEventArgs e)
         {
             if (!_isRotating || _selectedControl == null) return;
 
-            // 1. حساب مركز الكنترول بالنسبة للـ AdornerCanvas
+            // 1. حساب مركز الكنترول الأصلي (قبل الدوران) بالنسبة للـ AdornerCanvas
+            // نستخدم TransformToVisual على نسخة بدون RenderTransform عشان نحصل على المركز الحقيقي
+            var savedTransform = _selectedControl.RenderTransform;
+            _selectedControl.RenderTransform = null;
             var transform = _selectedControl.TransformToVisual(AdornerCanvas);
+            _selectedControl.RenderTransform = savedTransform;
+
             if (!transform.HasValue) return;
 
             var center = new Rect(0, 0, _selectedControl.Bounds.Width, _selectedControl.Bounds.Height)
                 .Center.Transform(transform.Value);
 
-            // 2. موضع الماوس الفعلي أثناء السحب (أدق من التخزين السابق)
+            // 2. موضع الماوس بالنسبة للـ AdornerCanvas
             var mousePos = e.GetPosition(AdornerCanvas);
 
-            // 3. حساب الزاوية (Atan2 ترجع الزاوية بالراديان)
+            // 3. حساب الزاوية
             double angleRad = Math.Atan2(mousePos.Y - center.Y, mousePos.X - center.X);
-            double angleDeg = angleRad * (180 / Math.PI) + 90; // +90 عشان المقبض فوق
+            double angleDeg = angleRad * (180.0 / Math.PI) + 90.0; // +90 عشان المقبض فوق
 
-            // 4. تطبيق الدوران مع "سنابات" (Snapping) كل 5 درجات للتحكم الأدق
-            _selectedControl.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
-            
-            // 🎯 السحر هنا: لو ضغط Shift، الدوران يكون حر، لو ساب Shift، يلف بـ 5 درجات
+            // 4. Snapping كل 15 درجة بدون Shift، حر مع Shift
             bool isShift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-            double finalAngle = isShift ? angleDeg : Math.Round(angleDeg / 5.0) * 5.0;
+            double finalAngle = isShift ? angleDeg : Math.Round(angleDeg / 15.0) * 15.0;
 
+            _selectedControl.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
             _selectedControl.RenderTransform = new RotateTransform(finalAngle);
 
-            // 5. تحديث مكان وحجم المربع الأزرق ليلتف مع العنصر
+            // 5. تحديث الـ Adorner
             UpdateAdornerPosition();
+            e.Handled = true;
         }
 
         private void RotateHandle_PointerReleased(object? sender, PointerReleasedEventArgs e)
         {
+            if (!_isRotating) return;
+
             _isRotating = false;
             e.Pointer.Capture(null);
             e.Handled = true;
-            
-            // تحديث أخير وضمان الحفظ
+
             if (_selectedControl != null)
             {
                 UpdateAdornerPosition();
