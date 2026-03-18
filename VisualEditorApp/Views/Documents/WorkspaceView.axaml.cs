@@ -164,45 +164,42 @@ namespace VisualEditorApp.Views.Documents
 
             try
             {
-                var designer = MyDesignSurface;
-                if (designer != null)
+                var targetControl = MyDesignSurface.SelectedControl;
+                if (targetControl == null || string.IsNullOrEmpty(targetControl.Name)) return;
+
+                string xml = MyCodeEditor.Text;
+
+                if (targetControl.Parent is Canvas)
                 {
-                    var targetControl = designer.SelectedControl;
-                    if (targetControl != null && !string.IsNullOrEmpty(targetControl.Name))
-                    {
-                        string xml = MyCodeEditor.Text;
-                        
-                        if (targetControl.Parent is Canvas)
-                        {
-                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Left", Canvas.GetLeft(targetControl).ToString());
-                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Top", Canvas.GetTop(targetControl).ToString());
-                        }
-                        else
-                        {
-                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Margin", $"{targetControl.Margin.Left},{targetControl.Margin.Top},0,0");
-                        }
-                        
-                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Width", targetControl.Width.ToString());
-                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Height", targetControl.Height.ToString());
-
-                        if (targetControl.RenderTransform is RotateTransform rt)
-                        {
-                            xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "RenderTransform", $"rotate({rt.Angle})");
-                        }
-                        
-                        if (xml != MyCodeEditor.Text)
-                        {
-                            MyCodeEditor.SetXamlText(xml);
-                        }
-                    }
+                    double left = Canvas.GetLeft(targetControl);
+                    double top  = Canvas.GetTop(targetControl);
+                    if (!double.IsNaN(left) && left >= 0)
+                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Left", ((int)Math.Round(left)).ToString());
+                    if (!double.IsNaN(top) && top >= 0)
+                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Canvas.Top", ((int)Math.Round(top)).ToString());
+                    xml = XamlDOMPatcher.RemoveAttribute(xml, targetControl.Name, "Margin");
                 }
-            }
-            finally
-            {
-                _isUpdating = false;
-            }
-        }
+                else
+                {
+                    var m = targetControl.Margin;
+                    if (!double.IsNaN(m.Left) && !double.IsNaN(m.Top) && m.Left >= 0 && m.Top >= 0)
+                        xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Margin",
+                            $"{(int)Math.Round(m.Left)},{(int)Math.Round(m.Top)},0,0");
+                }
 
+                double w = double.IsNaN(targetControl.Width)  ? targetControl.Bounds.Width  : targetControl.Width;
+                double h = double.IsNaN(targetControl.Height) ? targetControl.Bounds.Height : targetControl.Height;
+                if (w > 0) xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Width",  ((int)Math.Round(w)).ToString());
+                if (h > 0) xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "Height", ((int)Math.Round(h)).ToString());
+
+                if (targetControl.RenderTransform is RotateTransform rt)
+                    xml = XamlDOMPatcher.PatchProperty(xml, targetControl, "RenderTransform", $"rotate({rt.Angle})");
+
+                if (xml != MyCodeEditor.Text)
+                    MyCodeEditor.SetXamlText(xml);
+            }
+            finally { _isUpdating = false; }
+        }
         private void MyCodeEditor_XamlTextChanged(object? sender, string newXamlText)
         {
             if (_isUpdating || MyDesignSurface == null) return;
@@ -226,36 +223,42 @@ namespace VisualEditorApp.Views.Documents
             try
             {
                 string xml = MyCodeEditor.Text;
-                string parentName = args.Parent?.Name ?? "";
-                
-                // 🎯 إذا كان الأب هو الـ Root أو أجزاء الـ Window الوهمية، نرسل أمر الإضافة للعنصر الجذري في الـ XAML مباشرة
-                if (args.Parent == MyDesignSurface.RootDesign || 
-                    parentName == "SimulatedContentArea" || 
-                    parentName == "SimulatedWindowFrame" || 
-                    parentName == "SimulatedTitleBar")
+
+                // الـ parent الحقيقي في الـ XAML
+                var parent = args.Parent;
+                string parentName = "";
+                bool parentIsCanvas = false;
+
+                bool isRoot = parent == MyDesignSurface.RootDesign;
+                if (!isRoot && !string.IsNullOrEmpty(parent?.Name))
                 {
-                    parentName = ""; 
+                    parentName = parent.Name;
+                    parentIsCanvas = parent is Canvas;
                 }
 
                 string typeName = args.Element.GetType().Name;
-                string newName = args.Element.Name ?? "";
+                string newName  = args.Element.Name ?? "";
 
-                string extraProps = $"Width=\"{args.Element.Width}\" Height=\"{args.Element.Height}\"";
-                if (args.Parent is Canvas)
+                double w = double.IsNaN(args.Element.Width)  ? 100 : args.Element.Width;
+                double h = double.IsNaN(args.Element.Height) ? 30  : args.Element.Height;
+
+                string extraProps = $"Width=\"{(int)Math.Round(w)}\" Height=\"{(int)Math.Round(h)}\"";
+
+                if (parentIsCanvas)
                 {
-                    extraProps += $" Canvas.Left=\"{Canvas.GetLeft(args.Element)}\" Canvas.Top=\"{Canvas.GetTop(args.Element)}\"";
+                    double left = Canvas.GetLeft(args.Element);
+                    double top  = Canvas.GetTop(args.Element);
+                    if (double.IsNaN(left) || left < 0) left = 10;
+                    if (double.IsNaN(top)  || top  < 0) top  = 10;
+                    extraProps += $" Canvas.Left=\"{(int)Math.Round(left)}\" Canvas.Top=\"{(int)Math.Round(top)}\"";
                 }
 
                 string newXml = XamlDOMPatcher.AddElement(xml, parentName, typeName, newName, extraProps);
                 if (newXml != xml)
                 {
                     MyCodeEditor.SetXamlText(newXml);
-                    
-                    // 🎯 تحديث الـ Outline يدوياً من العناصر الموجودة فعلياً بدون ريندر كامل
                     if (MyDesignSurface?.RootDesign != null)
-                    {
                         MessageBus.Send(new DesignTreeUpdatedMessage(MyDesignSurface.RootDesign));
-                    }
                 }
             }
             finally { _isUpdating = false; }
@@ -292,92 +295,38 @@ namespace VisualEditorApp.Views.Documents
             try
             {
                 var newControl = LiveDesignerCompiler.RenderLiveXaml(xml, filePath);
+                if (newControl == null) return;
 
-                if (newControl != null)
+                object? designContext = newControl is Control oc ? Design.GetDataContext(oc) : null;
+
+                Control? finalElementToDisplay = null;
+
+                if (newControl is Window window)
                 {
-                    object designContext = null;
-                    if (newControl is Control originalControl)
-                    {
-                        designContext = Design.GetDataContext(originalControl);
-                    }
-
-                    Control? finalElementToDisplay = null;
-
-                    if (newControl is Window window)
-                    {
-                        var windowContent = window.Content as Control;
-                        window.Content = null;
-
-                        // بناء نافذة وهمية (Simulated Window)
-                        var windowFrame = new Grid
-                        {
-                            Name = window.Name, // 🎯 الحفاظ على الاسم عشان التحديد يشتغل صح
-                            Width = double.IsNaN(window.Width) ? 800 : window.Width,
-                            Height = double.IsNaN(window.Height) ? 450 : window.Height,
-                            ClipToBounds = false,
-                            RowDefinitions = RowDefinitions.Parse("30, *")
-                        };
-
-                        // شريط العنوان
-                        var titleBar = new Border
-                        {
-                            Name = "SimulatedTitleBar",
-                            Background = Brush.Parse("#3C3C3C"),
-                            CornerRadius = new CornerRadius(5, 5, 0, 0),
-                            Child = new TextBlock 
-                            { 
-                                Text = window.Title ?? "Window Preview", 
-                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                                Margin = new Thickness(10, 0),
-                                Foreground = Brushes.White,
-                                FontSize = 12
-                            }
-                        };
-                        Grid.SetRow(titleBar, 0);
-
-                        // المحتوى
-                        var contentArea = new Border
-                        {
-                            Name = "SimulatedContentArea",
-                            Background = window.Background ?? Brushes.White,
-                            CornerRadius = new CornerRadius(0, 0, 5, 5),
-                            Child = windowContent,
-                            BoxShadow = BoxShadows.Parse("0 5 15 0 #40000000")
-                        };
-                        Grid.SetRow(contentArea, 1);
-
-                        windowFrame.Children.Add(titleBar);
-                        windowFrame.Children.Add(contentArea);
-
-                        finalElementToDisplay = windowFrame;
-                    }
-                    else if (newControl is Control ctrl)
-                    {
-                        // 🎯 هنا قمنا بإزالة الـ Wrapper Border لتجنب تعقيد هيكلة الـ XAML
-                        // وضع كنترول المستخدم النهائي مباشرة هو الأفضل للمزامنة مع الكود
-                        finalElementToDisplay = ctrl;
-                    }
-
-                    if (designContext != null && finalElementToDisplay != null)
-                    {
-                        finalElementToDisplay.DataContext = designContext;
-                        if (finalElementToDisplay is Border b && b.Child != null)
-                        {
-                            b.Child.DataContext = designContext;
-                        }
-                    }
-
-                    if (finalElementToDisplay != null)
-                    {
-                        MyDesignSurface.LoadDesign(finalElementToDisplay);
-                        MessageBus.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
-                    }
+                    // نعرض محتوى الـ Window مباشرة بدون أي wrapper
+                    var windowContent = window.Content as Control;
+                    window.Content = null;
+                    finalElementToDisplay = windowContent;
                 }
+                else if (newControl is Control ctrl)
+                {
+                    finalElementToDisplay = ctrl;
+                }
+
+                if (finalElementToDisplay == null) return;
+
+                if (designContext != null)
+                    finalElementToDisplay.DataContext = designContext;
+
+                MyDesignSurface.LoadDesign(finalElementToDisplay);
+                MessageBus.Send(new DesignTreeUpdatedMessage(finalElementToDisplay));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error Initial Rendering: {ex.Message}");
-                MessageBus.Send(SystemDiagnosticMessage.Create(DiagnosticSeverity.Error, "VIEW001", $"Error during initial rendering: {ex.Message}", "WorkspaceView.axaml"));
+                System.Diagnostics.Debug.WriteLine($"SetXamlText error: {ex.Message}");
+                MessageBus.Send(SystemDiagnosticMessage.Create(
+                    DiagnosticSeverity.Error, "VIEW001",
+                    $"Render error: {ex.Message}", "WorkspaceView.axaml"));
             }
         }
 

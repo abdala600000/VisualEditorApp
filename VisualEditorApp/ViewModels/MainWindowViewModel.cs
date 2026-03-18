@@ -239,27 +239,66 @@ namespace VisualEditorApp.ViewModels
                 }
 
                 _factory.SolutionExplorer.LoadSolution(result.Solution);
-                
-                // Clear and update diagnostics from solution load if any
                 _factory.ProblemsTool.UpdateDiagnostics(new List<Models.ProblemItemViewModel>());
 
                 var projectCount = result.Solution.Projects.Count();
                 StatusText = $"Loaded {projectCount} projects";
+
+                // فتح الصفحة الافتراضية تلقائياً (MainWindow.axaml أو أول ملف axaml)
+                await OpenDefaultPageAsync(solutionPath, result.Solution);
             }
             catch (Exception ex)
             {
                 StatusText = $"Solution load failed: {ex.Message}";
                 _factory.ErrorListTool.LoadDiagnostics(new List<DiagnosticItem>
                 {
-                    new DiagnosticItem 
-                    { 
-                        Severity = DiagnosticSeverity.Error, 
-                        Code = "SLN001", 
-                        Description = $"Failed to load solution: {ex.Message}", 
+                    new DiagnosticItem
+                    {
+                        Severity = DiagnosticSeverity.Error,
+                        Code = "SLN001",
+                        Description = $"Failed to load solution: {ex.Message}",
                         File = solutionPath,
                         Project = Path.GetFileNameWithoutExtension(solutionPath)
                     }
                 });
+            }
+        }
+
+        private async Task OpenDefaultPageAsync(string solutionPath, Microsoft.CodeAnalysis.Solution solution)
+        {
+            try
+            {
+                string solutionDir = Path.GetDirectoryName(solutionPath) ?? "";
+
+                // أولوية البحث: MainWindow.axaml ثم App.axaml ثم أي ملف axaml
+                string[] priorities = { "MainWindow.axaml", "MainView.axaml", "App.axaml" };
+
+                string? defaultFile = null;
+
+                // نبحث في مجلد الـ solution أولاً
+                foreach (var name in priorities)
+                {
+                    var found = Directory.GetFiles(solutionDir, name, SearchOption.AllDirectories)
+                        .FirstOrDefault(f => !f.Contains("obj") && !f.Contains("bin"));
+                    if (found != null) { defaultFile = found; break; }
+                }
+
+                // إذا لم نجد، نأخذ أول axaml ليس في obj/bin
+                if (defaultFile == null)
+                {
+                    defaultFile = Directory.GetFiles(solutionDir, "*.axaml", SearchOption.AllDirectories)
+                        .FirstOrDefault(f => !f.Contains("obj") && !f.Contains("bin"));
+                }
+
+                if (defaultFile != null)
+                {
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        _factory.OpenDocument(defaultFile));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not open default page: {ex.Message}");
             }
         }
 

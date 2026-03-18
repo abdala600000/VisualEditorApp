@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+content = '''<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -64,7 +64,7 @@
                                 Background="White"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Top"
-                                BoxShadow="0 2 12 0 #35000000, 0 8 32 0 #18000000">
+                                BoxShadow="0 2 8 0 #25000000, 0 8 24 0 #15000000">
                             <Panel>
                                 <ContentControl x:Name="DesignSurface"
                                                 HorizontalAlignment="Stretch"
@@ -80,12 +80,9 @@
 
                 </paz:ZoomBorder>
 
-                <Canvas Name="AdornerCanvas"
-                        IsHitTestVisible="False"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        PointerMoved="RotateHandle_PointerMoved"
-                        PointerReleased="RotateHandle_PointerReleased">
+                <Canvas Name="AdornerCanvas" IsHitTestVisible="False"
+                    PointerMoved="RotateHandle_PointerMoved"
+                    PointerReleased="RotateHandle_PointerReleased">
                     <Rectangle Name="SelectionBox"
                                Fill="#202196F3"
                                Stroke="DodgerBlue"
@@ -94,7 +91,6 @@
                                IsVisible="False" />
                     <Border Name="SelectionAdorner" BorderBrush="DodgerBlue" BorderThickness="1.5" IsVisible="False">
                         <Grid>
-                            <!-- مقبض الدوران -->
                             <Ellipse Name="RotateHandle" Width="12" Height="12"
                                    Fill="DodgerBlue" Stroke="White" StrokeThickness="1.5"
                                    HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -105,28 +101,6 @@
                                   HorizontalAlignment="Center" VerticalAlignment="Top"
                                   Stroke="DodgerBlue" StrokeThickness="1"
                                   IsHitTestVisible="False"/>
-
-                            <!-- مقبض SkewX: وسط الجانب العلوي (بين مقبض الدوران ومقابض الزوايا) -->
-                            <Ellipse Name="SkewXHandle" Width="10" Height="10"
-                                     Fill="White" Stroke="DodgerBlue" StrokeThickness="1.5"
-                                     HorizontalAlignment="Center" VerticalAlignment="Top"
-                                     Margin="0,-5,0,0"
-                                     Cursor="SizeWestEast" ToolTip.Tip="Skew X"
-                                     PointerPressed="SkewHandle_PointerPressed"
-                                     PointerMoved="SkewHandle_PointerMoved"
-                                     PointerReleased="SkewHandle_PointerReleased" />
-
-                            <!-- مقبض SkewY: وسط الجانب الأيسر -->
-                            <Ellipse Name="SkewYHandle" Width="10" Height="10"
-                                     Fill="White" Stroke="DodgerBlue" StrokeThickness="1.5"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center"
-                                     Margin="-5,0,0,0"
-                                     Cursor="SizeNorthSouth" ToolTip.Tip="Skew Y"
-                                     PointerPressed="SkewHandle_PointerPressed"
-                                     PointerMoved="SkewHandle_PointerMoved"
-                                     PointerReleased="SkewHandle_PointerReleased" />
-
-                            <!-- مقابض التحجيم -->
                             <Thumb Name="TopLeft"     Classes="ResizerThumb" HorizontalAlignment="Left"   VerticalAlignment="Top"    Margin="-4,-4,0,0"  DragDelta="Resize_DragDelta" DragCompleted="Resize_DragCompleted" />
                             <Thumb Name="TopRight"    Classes="ResizerThumb" HorizontalAlignment="Right"  VerticalAlignment="Top"    Margin="0,-4,-4,0"  DragDelta="Resize_DragDelta" DragCompleted="Resize_DragCompleted" />
                             <Thumb Name="BottomLeft"  Classes="ResizerThumb" HorizontalAlignment="Left"   VerticalAlignment="Bottom" Margin="-4,0,0,-4"  DragDelta="Resize_DragDelta" DragCompleted="Resize_DragCompleted" />
@@ -138,4 +112,8 @@
             </Grid>
         </ScrollViewer>
     </Grid>
-</UserControl>
+</UserControl>'''
+
+with open('VisualEditor.Designer/DesignerSurfaceView.axaml', 'w', encoding='utf-8') as f:
+    f.write(content)
+print('Done')

@@ -1,181 +1,167 @@
 using System;
-using System.IO;
-using System.Linq;
-using System.Xml;
+using System.Text.RegularExpressions;
 using Avalonia.Controls;
 
 namespace VisualEditor.Core;
 
 /// <summary>
-/// A smart parser that modifies an existing XAML document
-/// without rebuilding it from scratch, preserving all events, bindings, and structure.
+/// Text-based XAML patcher - modifies XAML as plain text to preserve all formatting.
+/// Never re-serializes the whole document; only patches the specific element/attribute.
 /// </summary>
 public static class XamlDOMPatcher
 {
-    public static string PatchProperty(string originalXaml, Control targetControl, string propertyName, string newValue)
+    // ─── PatchProperty ────────────────────────────────────────────────────────
+    public static string PatchProperty(string xaml, Control target, string prop, string value)
     {
-        if (targetControl == null || string.IsNullOrWhiteSpace(originalXaml))
-            return originalXaml;
+        if (target == null || string.IsNullOrWhiteSpace(xaml) || string.IsNullOrEmpty(target.Name))
+            return xaml;
 
-        XmlDocument doc = new XmlDocument();
-        doc.PreserveWhitespace = true; // Preserve all formatting and spaces
+        var match = FindElementByName(xaml, target.Name);
+        if (!match.Success) return xaml;
 
-        try
-        {
-            doc.LoadXml(originalXaml);
-
-            // Find the element by name or infer it by its unique signature/path if the name is not set
-            // For now, if the control has a Name, we search for that specifically.
-            XmlElement targetElement = null;
-
-            if (!string.IsNullOrEmpty(targetControl.Name))
-            {
-                targetElement = FindElementByName(doc.DocumentElement, targetControl.Name);
-            }
-
-            if (targetElement != null)
-            {
-                UpdatePropertyAttribute(targetElement, propertyName, newValue);
-                return RenderXmlDocument(doc);
-            }
-        }
-        catch (XmlException)
-        {
-            // If the XAML is currently invalid due to typing, skip patching
-            return originalXaml;
-        }
-
-        return originalXaml; // Return unpatched if target not found
-    }
-    
-    public static string ApplyDesignChanges(string originalXaml, Control rootControl)
-    {
-        // For moving controls with the designer tool, we'll implement a deeper patcher later
-        // that crawls through rootControl and aligns properties to the DOC
-        return originalXaml;
+        string patchedTag = SetAttributeInTag(match.Value, prop, value);
+        return xaml.Substring(0, match.Index) + patchedTag + xaml.Substring(match.Index + match.Length);
     }
 
-    private static XmlElement FindElementByName(XmlElement root, string name)
+    // ─── AddElement ───────────────────────────────────────────────────────────
+    public static string AddElement(string xaml, string parentName, string elementType, string newName, string extraProps = "")
     {
-        if (root.GetAttribute("Name") == name || root.GetAttribute("x:Name") == name)
-            return root;
+        if (string.IsNullOrWhiteSpace(xaml)) return xaml;
 
-        foreach (XmlNode node in root.ChildNodes)
-        {
-            if (node is XmlElement childEl)
-            {
-                var found = FindElementByName(childEl, name);
-                if (found != null) return found;
-            }
-        }
-        return null;
-    }
+        string nameAttr  = string.IsNullOrEmpty(newName)    ? "" : $" Name=\"{newName}\"";
+        string propsAttr = string.IsNullOrEmpty(extraProps) ? "" : " " + extraProps;
+        string newElement = $"<{elementType}{nameAttr}{propsAttr} />";
 
-    private static void UpdatePropertyAttribute(XmlElement element, string propertyName, string newValue)
-    {
-        // Basic mapping for Margin (some designers prefer discrete margins, we'll keep it simple: Margin string)
-        if (newValue == null)
-        {
-            element.RemoveAttribute(propertyName);
-        }
+        if (string.IsNullOrEmpty(parentName))
+            return InsertIntoRoot(xaml, newElement);
         else
-        {
-            element.SetAttribute(propertyName, newValue);
-        }
+            return InsertIntoNamedParent(xaml, parentName, newElement);
     }
 
-    public static string AddElement(string originalXaml, string parentName, string elementType, string newName, string extraProps = "")
+    // ─── RemoveAttribute ─────────────────────────────────────────────────────
+    /// <summary>يحذف attribute محدد من عنصر بالاسم</summary>
+    public static string RemoveAttribute(string xaml, string elementName, string attrName)
     {
-        if (string.IsNullOrWhiteSpace(originalXaml)) return originalXaml;
+        if (string.IsNullOrEmpty(elementName) || string.IsNullOrWhiteSpace(xaml)) return xaml;
+        var match = FindElementByName(xaml, elementName);
+        if (!match.Success) return xaml;
 
-        XmlDocument doc = new XmlDocument();
-        doc.PreserveWhitespace = true;
-
-        try
-        {
-            doc.LoadXml(originalXaml);
-            XmlElement? parent = null;
-
-            if (string.IsNullOrEmpty(parentName))
-            {
-                parent = doc.DocumentElement;
-            }
-            else
-            {
-                parent = FindElementByName(doc.DocumentElement, parentName);
-            }
-
-            if (parent != null)
-            {
-                // Create the element with simple logic - for now assume standard Avalonia namespace
-                XmlElement newEl = doc.CreateElement(elementType, parent.NamespaceURI);
-                if (!string.IsNullOrEmpty(newName))
-                {
-                    newEl.SetAttribute("Name", newName);
-                }
-
-                // Apply extra props if any (e.g. Width="100")
-                if (!string.IsNullOrEmpty(extraProps))
-                {
-                    // Simple parser for "Prop1=Value1 Prop2=Value2"
-                    var pairs = extraProps.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var pair in pairs)
-                    {
-                        var parts = pair.Split('=');
-                        if (parts.Length == 2)
-                        {
-                            newEl.SetAttribute(parts[0], parts[1].Trim('"'));
-                        }
-                    }
-                }
-
-                parent.AppendChild(newEl);
-                return RenderXmlDocument(doc);
-            }
-        }
-        catch (XmlException) { }
-
-        return originalXaml;
+        string tag = match.Value;
+        string cleaned = Regex.Replace(tag, $@"\s*\b{Regex.Escape(attrName)}=""[^""]*""", "");
+        if (cleaned == tag) return xaml;
+        return xaml.Substring(0, match.Index) + cleaned + xaml.Substring(match.Index + match.Length);
     }
 
-    public static string RemoveElement(string originalXaml, string name)
+    // ─── RemoveElement ────────────────────────────────────────────────────────
+    public static string RemoveElement(string xaml, string name)
     {
-        if (string.IsNullOrEmpty(name) || string.IsNullOrWhiteSpace(originalXaml)) return originalXaml;
+        if (string.IsNullOrEmpty(name) || string.IsNullOrWhiteSpace(xaml)) return xaml;
 
-        XmlDocument doc = new XmlDocument();
-        doc.PreserveWhitespace = true;
+        string escaped = Regex.Escape(name);
 
-        try
-        {
-            doc.LoadXml(originalXaml);
-            XmlElement? target = FindElementByName(doc.DocumentElement, name);
+        // self-closing: <Tag ... Name="x" ... />
+        string selfClosing = $@"[ \t]*<\w[\w:.]*[^>]*(?:x:Name|Name)=""{escaped}""[^>]*/>\r?\n?";
+        var result = Regex.Replace(xaml, selfClosing, "", RegexOptions.Singleline);
+        if (result != xaml) return result;
 
-            if (target != null && target.ParentNode != null)
-            {
-                target.ParentNode.RemoveChild(target);
-                return RenderXmlDocument(doc);
-            }
-        }
-        catch (XmlException) { }
-
-        return originalXaml;
+        // opening+closing: <Tag ...>...</Tag>
+        string openClose = $@"[ \t]*<(\w[\w:.]*)([^>]*(?:x:Name|Name)=""{escaped}"")[^>]*>.*?</\1>\r?\n?";
+        return Regex.Replace(xaml, openClose, "", RegexOptions.Singleline);
     }
 
-    private static string RenderXmlDocument(XmlDocument doc)
-    {
-        using var stringWriter = new StringWriter();
-        // 🎯 الحفاظ على التشكيلة الأصلية للملف قدر الإمكان
-        using var xmlTextWriter = XmlWriter.Create(stringWriter, new XmlWriterSettings
-        {
-            OmitXmlDeclaration = true,
-            Indent = true, 
-            IndentChars = "    ", // استخدام 4 مسافات كالمعتاد في Visual Studio
-            NewLineHandling = NewLineHandling.None, // الحفاظ على نهايات الأسطر
-            NamespaceHandling = NamespaceHandling.OmitDuplicates
-        });
+    // ─── Private Helpers ──────────────────────────────────────────────────────
 
-        doc.WriteContentTo(xmlTextWriter);
-        xmlTextWriter.Flush();
-        return stringWriter.ToString();
+    /// <summary>
+    /// يجد أول tag (self-closing أو opening) يحتوي على Name="name" أو x:Name="name"
+    /// مع تجاهل التعليقات والـ Design.DataContext
+    /// </summary>
+    private static Match FindElementByName(string xaml, string name)
+    {
+        string escaped = Regex.Escape(name);
+        // يطابق self-closing أو opening tag يحتوي على الاسم
+        string pattern = $@"<\w[\w:.]*\s[^>]*(?:x:Name|Name)=""{escaped}""[^>]*(?:/>|>)";
+        return Regex.Match(xaml, pattern, RegexOptions.Singleline);
+    }
+
+    /// <summary>
+    /// يضيف أو يعدل attribute داخل نص tag
+    /// </summary>
+    private static string SetAttributeInTag(string tag, string attrName, string attrValue)
+    {
+        // هل الـ attribute موجود؟
+        string attrPattern = $@"\b{Regex.Escape(attrName)}=""[^""]*""";
+        if (Regex.IsMatch(tag, attrPattern))
+            return Regex.Replace(tag, attrPattern, $"{attrName}=\"{attrValue}\"");
+
+        // أضفه قبل /> أو >
+        if (Regex.IsMatch(tag, @"/>\s*$"))
+            return Regex.Replace(tag, @"\s*/>(\s*)$", $" {attrName}=\"{attrValue}\" />$1");
+        else
+            return Regex.Replace(tag, @">\s*$", $" {attrName}=\"{attrValue}\">");
+    }
+
+    /// <summary>
+    /// يدرج العنصر الجديد مباشرة قبل آخر closing tag في الملف (الجذر)
+    /// مع تجاهل Design.DataContext وأي property elements
+    /// </summary>
+    private static string InsertIntoRoot(string xaml, string newElement)
+    {
+        // نجد الـ root tag name من أول سطر
+        var rootTagMatch = Regex.Match(xaml, @"<(\w[\w:.]*)[\s>]");
+        if (!rootTagMatch.Success) return xaml;
+        string rootTag = rootTagMatch.Groups[1].Value;
+
+        // نجد closing tag الجذر: </Window> أو </UserControl> إلخ
+        string closeTag = $"</{rootTag}>";
+        int closeIndex = xaml.LastIndexOf(closeTag, StringComparison.Ordinal);
+        if (closeIndex < 0) return xaml;
+
+        // indentation: نفس indent الجذر + 4 مسافات
+        string rootIndent = GetIndentOf(xaml, rootTagMatch.Index);
+        string childIndent = rootIndent + "    ";
+
+        string insertion = childIndent + newElement + "\n";
+        return xaml.Substring(0, closeIndex) + insertion + xaml.Substring(closeIndex);
+    }
+
+    /// <summary>
+    /// يدرج العنصر الجديد داخل parent محدد بالاسم
+    /// </summary>
+    private static string InsertIntoNamedParent(string xaml, string parentName, string newElement)
+    {
+        string escaped = Regex.Escape(parentName);
+
+        // نجد opening tag للـ parent
+        string parentPattern = $@"<(\w[\w:.]*)([^>]*(?:x:Name|Name)=""{escaped}"")[^>]*>";
+        var parentMatch = Regex.Match(xaml, parentPattern, RegexOptions.Singleline);
+        if (!parentMatch.Success) return xaml;
+
+        string tagName = parentMatch.Groups[1].Value;
+        int searchFrom = parentMatch.Index + parentMatch.Length;
+
+        // نجد closing tag المقابل
+        string closeTag = $"</{tagName}>";
+        int closeIndex = xaml.IndexOf(closeTag, searchFrom, StringComparison.Ordinal);
+        if (closeIndex < 0) return xaml;
+
+        string indent = GetIndentOf(xaml, parentMatch.Index) + "    ";
+        string insertion = "\n" + indent + newElement;
+
+        return xaml.Substring(0, closeIndex)
+             + insertion + "\n"
+             + GetIndentOf(xaml, closeIndex)
+             + xaml.Substring(closeIndex);
+    }
+
+    /// <summary>
+    /// يرجع الـ whitespace في بداية السطر الذي يحتوي على position
+    /// </summary>
+    private static string GetIndentOf(string text, int position)
+    {
+        int lineStart = text.LastIndexOf('\n', Math.Max(0, position - 1));
+        lineStart = lineStart < 0 ? 0 : lineStart + 1;
+        int i = lineStart;
+        while (i < text.Length && (text[i] == ' ' || text[i] == '\t')) i++;
+        return text.Substring(lineStart, i - lineStart);
     }
 }
